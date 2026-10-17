@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Free-lane chats answer again after the 2026-10-15 gate change (#72): the lane moved to
+  the `/inference` host, the disguise header set follows #74/#75/#78 (`x-opencode-request`
+  is refused, `x-opencode-project: global`, `x-opencode-session-id` repeats the session),
+  and the injected `bash`/`read` gate tools now carry the CLI's real schemas — an
+  empty-schema shell of a gate name no longer satisfies the gate. A refusal that lands
+  before any content replays once on the sibling host (`/zen` <-> `/inference`), which
+  absorbs the gate's intermittent refusals (PR #80's measurement).
+
 ## 0.3.12 (2026-10-14)
 
 ### Fixed

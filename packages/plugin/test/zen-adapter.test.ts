@@ -253,7 +253,10 @@ const gateBody = {
   model: 'big-pickle',
   messages: [{ role: 'user', content: 'hi' }],
   stream: true,
-  tools: ['bash', 'read'].map((name) => ({ type: 'function', function: { name, description: 'd', parameters: {} } })),
+  tools: ['bash', 'read'].map((name) => ({
+    type: 'function',
+    function: { name, description: 'd', parameters: { type: 'object', properties: { value: { type: 'string' } } } },
+  })),
 }
 
 async function runStream(catalogReasoning: boolean, effort?: string): Promise<Array<{ onPayload?: (payload: unknown) => unknown }>> {
