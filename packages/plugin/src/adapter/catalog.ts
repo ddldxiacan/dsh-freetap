@@ -179,9 +179,37 @@ export function decodeModelsDev(data: unknown): Map<string, ModelPrice> {
         ...(inputModalities !== undefined ? { modalities: inputModalities } : {}),
       })
     }
-    if (result.size > 0) return result
+    if (result.size > 0) {
+      deriveFreeLimitsFromTwin(result)
+      return result
+    }
   }
   return result
+}
+
+/**
+ * models.dev underreports the free-lane variants: `glm-5.3-flash-free` is
+ * registered with `limit.context: 200000` while its paid twin
+ * `glm-5.3-flash` declares 1000000. Derive the free variant's declared
+ * limits from the twin of the same base id (id minus the `-free` suffix),
+ * raising a field only when the twin declares a larger value — a missing
+ * twin, a twin without limits, or a twin smaller on a given field leaves
+ * that field untouched. New free ids therefore self-align as models.dev
+ * learns their twins, and no model is ever lowered. `LOCAL_MODEL_OVERRIDES`
+ * still wins for ids whose twin declares nothing (mimo-v2.6-flash-free).
+ */
+function deriveFreeLimitsFromTwin(prices: Map<string, ModelPrice>): void {
+  for (const [id, price] of prices) {
+    if (!id.endsWith('-free')) continue
+    const twin = prices.get(id.slice(0, -'-free'.length))
+    if (twin === undefined) continue
+    for (const field of ['contextWindow', 'maxOutput'] as const) {
+      const value = twin[field]
+      if (value === undefined) continue
+      const current = price[field]
+      if (current === undefined || value > current) price[field] = value
+    }
+  }
 }
 
 function metadataDeprecated(model: Record<string, unknown>): boolean {

@@ -189,6 +189,39 @@ test('decodeModelsDev extracts the declared context/output limits', () => {
   assert.equal(prices.get('bad-limit-free')?.maxOutput, undefined)
 })
 
+test('decodeModelsDev raises free-lane limits from the paid twin, raising only', () => {
+  const payload = {
+    opencode: {
+      models: {
+        // twin declares a larger window: both fields raise
+        'glm-5.3-flash-free': { cost: { input: 0, output: 0 }, limit: { context: 200000, output: 32000 } },
+        'glm-5.3-flash': { cost: { input: 1, output: 2 }, limit: { context: 1000000, output: 131072 } },
+        // twin smaller on one field: that field stays, the other raises
+        'kimi-k2.5-free': { cost: { input: 0, output: 0 }, limit: { context: 262144, output: 262144 } },
+        'kimi-k2.5': { cost: { input: 1, output: 2 }, limit: { context: 262144, output: 65536 } },
+        // no twin: untouched
+        'beam-free': { cost: { input: 0, output: 0 }, limit: { context: 1048576, output: 131072 } },
+        // twin present but declares no limits: untouched
+        'mimo-v2.6-flash-free': { cost: { input: 0, output: 0 }, limit: { context: 200000, output: 32000 } },
+        'mimo-v2.6-flash': { cost: { input: 1, output: 2 } },
+        // free variant declares no limits at all: twin fills the gap
+        'qwen-free': { cost: { input: 0, output: 0 } },
+        qwen: { cost: { input: 1, output: 2 }, limit: { context: 1000000, output: 128000 } },
+      },
+    },
+  }
+  const prices = decodeModelsDev(payload)
+  assert.deepEqual(prices.get('glm-5.3-flash-free')?.contextWindow, 1000000)
+  assert.deepEqual(prices.get('glm-5.3-flash-free')?.maxOutput, 131072)
+  assert.deepEqual(prices.get('kimi-k2.5-free')?.contextWindow, 262144)
+  assert.deepEqual(prices.get('kimi-k2.5-free')?.maxOutput, 262144)
+  assert.deepEqual(prices.get('beam-free')?.contextWindow, 1048576)
+  assert.deepEqual(prices.get('mimo-v2.6-flash-free')?.contextWindow, 200000)
+  assert.deepEqual(prices.get('mimo-v2.6-flash-free')?.maxOutput, 32000)
+  assert.deepEqual(prices.get('qwen-free')?.contextWindow, 1000000)
+  assert.deepEqual(prices.get('qwen-free')?.maxOutput, 128000)
+})
+
 test('ModelCatalog.limits speaks only when the metadata declares them', async () => {
   const catalog = new ModelCatalog({
     fetchImpl: fakeFetch({
