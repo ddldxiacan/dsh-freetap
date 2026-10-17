@@ -40,23 +40,38 @@ nothing to host.
 
 ## Install
 
-**From the plugin market** (recommended, once this repo is listed there):
-in DSH open **Settings → Plugin Market**, search `opencode2dsh`, one-click
-install.
+This fork is installed from its own prebuilt release, so no build step and no
+toolchain is needed:
 
-**From npm**:
+```sh
+dsh plugin --profile web add https://github.com/ddldxiacan/opencode2dsh/releases/latest/download/opencode2dsh-dsh-plugin.tgz
+```
+
+The link is version-free on purpose, so it keeps tracking the newest release.
+
+**On the first install, DSH asks you to approve two build scripts.** They are
+`@google/genai` and `protobufjs`, pulled in transitively by
+`@earendil-works/pi-ai`; pnpm blocks dependency build scripts by default, so the
+first run stops with `ERR_PNPM_IGNORED_BUILDS`. Approve them and retry — in DSH
+Web the plugin page offers **Allow these scripts and retry**; on the CLI add
+them to `allowBuilds` in the profile's `pnpm-workspace.yaml` and run the command
+again. The second run completes. This is inherent to the plugin's dependency
+tree and applies to every install source, not just this one.
+
+**In the Web UI instead**: **Settings → Plugins → Install**, and paste the same
+tarball URL. (Verified on the CLI path only; the Web page takes the same spec.)
+
+⚠️ **Do not install this fork with `github:ddldxiacan/opencode2dsh`.** The
+repository root depends on `@opencode2dsh/dsh-plugin: ^0.3.1`, which resolves to
+the upstream npm build — that build predates the free-lane fix, so you would get
+the broken behaviour back. Installing the `packages/plugin` subdirectory instead
+(`#path:/packages/plugin`) makes pnpm run that package's build scripts, which it
+refuses without approval. The release tarball above is the path that works.
+
+**From upstream npm** (unpatched — kept for reference):
 
 ```sh
 dsh plugin --profile web add @opencode2dsh/dsh-plugin
-```
-
-**From source** (build the tarball yourself):
-
-```sh
-git clone https://github.com/FishBottle7/opencode2dsh.git
-cd opencode2dsh/packages/plugin
-pnpm install && pnpm pack
-dsh plugin --profile web add ./opencode2dsh-dsh-plugin-<version>.tgz
 ```
 
 **Verify**: restart `dsh web`, open the model picker, and pick a model from

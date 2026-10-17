@@ -39,22 +39,34 @@ OpenCode 官方 CLI 无需登录即可使用的那批免费模型，它们会以
 
 ## 安装
 
-**从插件市场安装**（推荐，收录后可用）：在 DSH 里打开 **设置 → 插件市场**，
-搜索 `opencode2dsh`，一键安装。
+本分叉从自己的预构建 Release 安装，无需构建步骤，也不需要工具链：
 
-**从 npm 安装**：
+```sh
+dsh plugin --profile web add https://github.com/ddldxiacan/opencode2dsh/releases/latest/download/opencode2dsh-dsh-plugin.tgz
+```
+
+链接不带版本号是有意为之，这样它会一直指向最新 Release。
+
+**首次安装时，DSH 会要求你批准两个构建脚本。** 它们是 `@google/genai` 和
+`protobufjs`，由 `@earendil-works/pi-ai` 传递引入；pnpm 默认拦截依赖的构建脚本，
+所以第一次运行会以 `ERR_PNPM_IGNORED_BUILDS` 停下。批准后重试即可——在 DSH Web 里，
+插件页会提供 **Allow these scripts and retry**；在 CLI 里，把这两个包名加进 profile
+的 `pnpm-workspace.yaml` 中的 `allowBuilds`，再跑一次同样的命令，第二次即可完成。
+这是插件依赖树本身带来的，任何安装来源都一样，并非本分叉特有。
+
+**在 Web 界面里安装**：**设置 → 插件 → 安装**，粘贴同一个 tarball 链接即可。
+（仅 CLI 路径经过实测；Web 页收的是同一种 spec。）
+
+⚠️ **不要用 `github:ddldxiacan/opencode2dsh` 安装本分叉。** 仓库根依赖的是
+`@opencode2dsh/dsh-plugin: ^0.3.1`，它会解析到上游的 npm 构建——那份构建早于
+免费通道修复，装上去等于把旧的问题行为拿回来。而改装 `packages/plugin` 子目录
+（`#path:/packages/plugin`）会让 pnpm 去跑该包的构建脚本，未经批准它不会执行。
+上面那个 Release tarball 才是可用的路径。
+
+**从上游 npm 安装**（未含修复，仅作参考）：
 
 ```sh
 dsh plugin --profile web add @opencode2dsh/dsh-plugin
-```
-
-**从源码安装**（自行打包）：
-
-```sh
-git clone https://github.com/FishBottle7/opencode2dsh.git
-cd opencode2dsh/packages/plugin
-pnpm install && pnpm pack
-dsh plugin --profile web add ./opencode2dsh-dsh-plugin-<version>.tgz
 ```
 
 **验证**：重启 `dsh web`，打开模型选择器，在 **opencode2dsh** 分组里选模型即可。
