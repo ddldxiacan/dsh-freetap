@@ -39,7 +39,32 @@ OpenCode 官方 CLI 无需登录即可使用的那批免费模型，它们会以
 
 ## 安装
 
-本分叉从自己的预构建 Release 安装，无需构建步骤，也不需要工具链：
+本分叉从自己的预构建 Release 安装，无需构建步骤，也不需要工具链。
+**请按顺序做这三步**——如果跳过第 2 步先装，会以一种「看起来成功」的方式静默失败
+（原因见下）。
+
+**1. 确保 profile 已存在。** 任意一条 `dsh plugin` 命令都会初始化它：
+
+```sh
+dsh plugin --profile web list
+```
+
+**2. 在首次安装「之前」批准两个构建脚本。** 它们是 `@google/genai` 和
+`protobufjs`，由 `@earendil-works/pi-ai` 传递引入；pnpm 默认拦截依赖的构建脚本。
+把下面内容追加到 profile 的 `pnpm-workspace.yaml`
+（`~/.dsh/profiles/web/pnpm-workspace.yaml`，Windows 下位于
+`%USERPROFILE%\.dsh\profiles\web\`）：
+
+```yaml
+allowBuilds:
+  '@google/genai': false
+  protobufjs: false
+```
+
+写 `false` 表示仍然禁用这两个脚本——它记录的是 pnpm 等待的那个「决定」，这就够了。
+（上游也是把这两个设为 `false`。）
+
+**3. 安装：**
 
 ```sh
 dsh plugin --profile web add https://github.com/ddldxiacan/opencode2dsh/releases/latest/download/opencode2dsh-dsh-plugin.tgz
@@ -47,15 +72,29 @@ dsh plugin --profile web add https://github.com/ddldxiacan/opencode2dsh/releases
 
 链接不带版本号是有意为之，这样它会一直指向最新 Release。
 
-**首次安装时，DSH 会要求你批准两个构建脚本。** 它们是 `@google/genai` 和
-`protobufjs`，由 `@earendil-works/pi-ai` 传递引入；pnpm 默认拦截依赖的构建脚本，
-所以第一次运行会以 `ERR_PNPM_IGNORED_BUILDS` 停下。批准后重试即可——在 DSH Web 里，
-插件页会提供 **Allow these scripts and retry**；在 CLI 里，把这两个包名加进 profile
-的 `pnpm-workspace.yaml` 中的 `allowBuilds`，再跑一次同样的命令，第二次即可完成。
-这是插件依赖树本身带来的，任何安装来源都一样，并非本分叉特有。
+### 为什么必须先做第 2 步
 
-**在 Web 界面里安装**：**设置 → 插件 → 安装**，粘贴同一个 tarball 链接即可。
-（仅 CLI 路径经过实测；Web 页收的是同一种 spec。）
+跳过它的话，首次安装会以 `ERR_PNPM_IGNORED_BUILDS` 停下——但 pnpm 这时**已经**把依赖
+写进了 profile 的 `package.json`。而 DSH 只在那次 pnpm 运行**退出码为 0 且该包是新依赖**
+时，才把它注册为 profile 的 bundle。于是重试时它已不算「新依赖」，注册被跳过，运行以
+**0** 退出：插件躺在 `node_modules` 里，却从未被加进 `dsh.profile.bundles`——它也就
+永远不会加载，模型选择器里不会出现任何模型。而输出里没有任何信息提示这一点。
+
+如果你已经踩了这个坑，用「先移除、再重装」恢复：
+
+```sh
+dsh plugin --profile web remove @opencode2dsh/dsh-plugin
+dsh plugin --profile web add https://github.com/ddldxiacan/opencode2dsh/releases/latest/download/opencode2dsh-dsh-plugin.tgz
+```
+
+要确认插件真的注册上了，检查 profile 的 `package.json`：
+`@opencode2dsh/dsh-plugin` 应出现在 `dsh.profile.bundles` 里，而不只是
+`dependencies` 里。
+
+### 其他安装方式
+
+**在 Web 界面里安装**：**设置 → 插件 → 安装**，粘贴同一个 tarball 链接。Web 页会写入
+同类的批准，并有自己的 bundle 选择流程；上面那套 CLI 步骤是此处经过实测的路径。
 
 ⚠️ **不要用 `github:ddldxiacan/opencode2dsh` 安装本分叉。** 仓库根依赖的是
 `@opencode2dsh/dsh-plugin: ^0.3.1`，它会解析到上游的 npm 构建——那份构建早于

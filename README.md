@@ -41,7 +41,32 @@ nothing to host.
 ## Install
 
 This fork is installed from its own prebuilt release, so no build step and no
-toolchain is needed:
+toolchain is needed. **Read the three steps in order** — doing the install before
+step 2 fails silently, in a way that looks like success (see below).
+
+**1. Make sure the profile exists.** Any `dsh plugin` command initializes it:
+
+```sh
+dsh plugin --profile web list
+```
+
+**2. Approve two build scripts *before* the first install.** They are
+`@google/genai` and `protobufjs`, pulled in transitively by
+`@earendil-works/pi-ai`; pnpm blocks dependency build scripts by default. Append
+this to the profile's `pnpm-workspace.yaml`
+(`~/.dsh/profiles/web/pnpm-workspace.yaml`, under `%USERPROFILE%\.dsh\profiles\web\`
+on Windows):
+
+```yaml
+allowBuilds:
+  '@google/genai': false
+  protobufjs: false
+```
+
+`false` keeps the scripts disabled — it records the decision pnpm is waiting for,
+which is all that is needed. (Upstream ships the same two as `false`.)
+
+**3. Install:**
 
 ```sh
 dsh plugin --profile web add https://github.com/ddldxiacan/opencode2dsh/releases/latest/download/opencode2dsh-dsh-plugin.tgz
@@ -49,17 +74,32 @@ dsh plugin --profile web add https://github.com/ddldxiacan/opencode2dsh/releases
 
 The link is version-free on purpose, so it keeps tracking the newest release.
 
-**On the first install, DSH asks you to approve two build scripts.** They are
-`@google/genai` and `protobufjs`, pulled in transitively by
-`@earendil-works/pi-ai`; pnpm blocks dependency build scripts by default, so the
-first run stops with `ERR_PNPM_IGNORED_BUILDS`. Approve them and retry — in DSH
-Web the plugin page offers **Allow these scripts and retry**; on the CLI add
-them to `allowBuilds` in the profile's `pnpm-workspace.yaml` and run the command
-again. The second run completes. This is inherent to the plugin's dependency
-tree and applies to every install source, not just this one.
+### Why step 2 comes first
 
-**In the Web UI instead**: **Settings → Plugins → Install**, and paste the same
-tarball URL. (Verified on the CLI path only; the Web page takes the same spec.)
+Skip it and the first install stops at `ERR_PNPM_IGNORED_BUILDS` — but pnpm has
+already written the dependency into the profile's `package.json`. DSH registers a
+newly installed package as a profile *bundle* only when that pnpm run exits 0
+**and** the package is a new dependency. So the retry is no longer "new", the
+registration is skipped, and the run exits **0** with the plugin present on disk
+in `node_modules` but never added to `dsh.profile.bundles` — meaning it never
+loads and no models appear. Nothing in the output says so.
+
+If you have already hit that, recover with a remove and re-add:
+
+```sh
+dsh plugin --profile web remove @opencode2dsh/dsh-plugin
+dsh plugin --profile web add https://github.com/ddldxiacan/opencode2dsh/releases/latest/download/opencode2dsh-dsh-plugin.tgz
+```
+
+To confirm the plugin is really registered, check that the profile's
+`package.json` lists `@opencode2dsh/dsh-plugin` under `dsh.profile.bundles` — not
+just under `dependencies`.
+
+### Other ways to install
+
+**In the Web UI**: **Settings → Plugins → Install**, and paste the same tarball
+URL. The Web page writes the same kind of approval and has its own bundle
+selection; the CLI steps above are the path verified here.
 
 ⚠️ **Do not install this fork with `github:ddldxiacan/opencode2dsh`.** The
 repository root depends on `@opencode2dsh/dsh-plugin: ^0.3.1`, which resolves to
