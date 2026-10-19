@@ -91,15 +91,29 @@ jobs:
 
       - name: Commit the prebuilt output and version bump
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json packages/plugin/package.json packages/plugin/lib packages/plugin/README.md packages/plugin/README.zh-CN.md packages/plugin/LICENSE
+
+          # Only the tracked artifacts matter. The README/LICENSE copies that
+          # prepare-package.mjs writes into packages/plugin are gitignored, so
+          # naming them here would either be a no-op or an error.
+          git add package.json packages/plugin/package.json packages/plugin/lib
+
           if git diff --cached --quiet; then
-            echo "Nothing to commit."
-          else
-            git commit -m "chore(release): v${{ steps.version.outputs.version }}"
-            git push origin HEAD:master
+            echo "Nothing to commit; master already carries this build."
+            exit 0
           fi
+
+          git commit -m "chore(release): v${{ steps.version.outputs.version }}"
+
+          # The tag checkout is a detached HEAD based on the tagged commit, which
+          # may be behind master. Rebase onto master before pushing, so the
+          # version bump and build land on top of the current branch rather than
+          # being rejected as non-fast-forward.
+          git fetch origin master
+          git rebase origin/master
+          git push origin HEAD:master
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -108,3 +122,21 @@ jobs:
           files: ${{ runner.temp }}/dsh-opencode-free-dsh-plugin.tgz
           generate_release_notes: true
           fail_on_unmatched_files: true
+
+      # npm is optional: it needs the @dsh-opencode-free scope to exist and an
+      # NPM_TOKEN secret with publish rights. Both absent is normal, so this step
+      # reports and skips instead of failing the release — the release tarball
+      # and the git install already work without a registry.
+      - name: Publish to npm
+        working-directory: packages/plugin
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN}" ]; then
+            echo "NPM_TOKEN is not configured; skipping npm publish."
+            echo "The Release tarball and github: install remain the supported paths."
+            exit 0
+          fi
+          printf '//registry.npmjs.org/:_authToken=%s\n' "${NODE_AUTH_TOKEN}" > .npmrc
+          npm publish --access public
+          rm -f .npmrc
