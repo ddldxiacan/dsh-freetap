@@ -86,11 +86,17 @@ const config: UserConfig = {
     resolveId(source: string, importer: string | undefined) {
       if (!source.endsWith('.module.css')) return null
       const abs = importer !== undefined ? sourceAssetPath(source, importer) : source
-      return CSS_VIRTUAL_PREFIX + abs + CSS_VIRTUAL_SUFFIX
+      // The virtual id ends up in the bundle: rolldown emits it in a
+      // `//#region <id>` comment, so an absolute path would bake the build
+      // machine's directory into lib/client.js and make the committed artifact
+      // differ from a build on any other host. Use the repo-relative path.
+      const id = relative(PACKAGE_ROOT, abs).split(sep).join('/')
+      return CSS_VIRTUAL_PREFIX + id + CSS_VIRTUAL_SUFFIX
     },
     async load(virtualId: string) {
       if (!virtualId.startsWith(CSS_VIRTUAL_PREFIX)) return null
-      const fileId = virtualId.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
+      const relId = virtualId.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
+      const fileId = resolvePath(PACKAGE_ROOT, relId)
       this.addWatchFile(fileId)
       const source = await readFile(fileId)
       // `[hash]` is derived from the filename handed to lightningcss, so an
@@ -98,7 +104,7 @@ const config: UserConfig = {
       // (and therefore on the OS: CI's /home/runner vs a Windows E:\ checkout).
       // The committed bundle must be identical wherever it is built, so hash the
       // repository-relative path instead.
-      const hashName = relative(PACKAGE_ROOT, fileId).split(sep).join('/')
+      const hashName = relId
       const { code, exports: cssExports } = transform({
         filename: hashName,
         code: source,
