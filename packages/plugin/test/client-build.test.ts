@@ -26,9 +26,9 @@ const code = (source: string): string =>
 test('client bundle is built and well-formed', () => {
   const source = bundle()
   assert.ok(source.includes('window.__ModuleLoader__.load'), 'loader handoff present')
-  assert.ok(source.includes('"@opencode2dsh/dsh-plugin"'), 'scoped bundle id stamped')
+  assert.ok(source.includes('"@dsh-opencode-free/dsh-plugin"'), 'scoped bundle id stamped')
   assert.ok(source.includes('plugins.item'), 'plugins.item registration present')
-  assert.ok(source.includes('/api/opencode2dsh/ip-pool'), 'bridge prefix baked in')
+  assert.ok(source.includes('/api/dsh-opencode-free/ip-pool'), 'bridge prefix baked in')
   assert.ok(/exports\.apply\s*=/.test(source), 'apply exported')
   assert.ok(/exports\.inject\s*=/.test(source), 'inject exported')
 })
@@ -45,7 +45,7 @@ test('client mounts on the Plugins page while the Host serves the entry', () => 
   assert.ok(/whileServed\(\[SETTINGS_NAMESPACE\]/.test(source), 'gated on this entry\'s namespace')
   // The entry id is the Loader entry id (the plugin name), not the old
   // `ip-pool` namespace the Host registered.
-  assert.ok(source.includes('"opencode2dsh"'), 'the served entry id is the plugin name')
+  assert.ok(source.includes('"dsh-opencode-free"'), 'the served entry id is the plugin name')
 
   const stripped = code(source)
   assert.ok(!stripped.includes('settings.plugin.item'), 'the removed card slot is not registered')

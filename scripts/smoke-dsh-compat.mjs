@@ -66,7 +66,7 @@ ctx.reflect.provide('locale', { register: () => () => {}, bind: () => (key) => k
 class ConfigForms extends Service {
   constructor(ctx) { super(ctx, 'configForms') }
   whileServed(names, register) {
-    assert.deepEqual(Array.from(names), ['opencode2dsh'])
+    assert.deepEqual(Array.from(names), ['dsh-opencode-free'])
     return register(new Set(names))
   }
 }
@@ -116,14 +116,14 @@ const { ModelCatalog } = await import(new URL('src/adapter/catalog.ts', pluginRo
 const { applyIpPoolSettings: applyPool } = await import(new URL('src/ip-pool-settings/apply.ts', pluginRoot))
 const adapter = new Adapter(new ModelCatalog())
 const registry = { adapters: new Map() }
-const routes = LlmRuntime.prototype.prepareRoutes.call(registry, ['opencode2dsh'], adapter, new Set())
-assert.equal(routes[0].provider.id, 'opencode2dsh')
-registry.adapters.set('opencode2dsh', { adapter })
-assert.equal(LlmRuntime.prototype.imageRequestPricing.call(registry, 'opencode2dsh', 'big-pickle'), undefined)
+const routes = LlmRuntime.prototype.prepareRoutes.call(registry, ['dsh-opencode-free'], adapter, new Set())
+assert.equal(routes[0].provider.id, 'dsh-opencode-free')
+registry.adapters.set('dsh-opencode-free', { adapter })
+assert.equal(LlmRuntime.prototype.imageRequestPricing.call(registry, 'dsh-opencode-free', 'big-pickle'), undefined)
 
 // Load the actual server artifact in a real Cordis fiber, without touching
 // the user's DSH profile or making a request to the external Zen service.
-const scratch = mkdtempSync(join(os.tmpdir(), 'opencode2dsh-smoke-'))
+const scratch = mkdtempSync(join(os.tmpdir(), 'dsh-opencode-free-smoke-'))
 const savedHomedir = os.homedir
 const savedFetch = globalThis.fetch
 os.homedir = () => scratch
@@ -149,7 +149,7 @@ try {
   globalThis.fetch = savedFetch
   os.homedir = savedHomedir
   syncBuiltinESMExports()
-  assert.ok(scratch.startsWith(join(os.tmpdir(), 'opencode2dsh-smoke-')))
+  assert.ok(scratch.startsWith(join(os.tmpdir(), 'dsh-opencode-free-smoke-')))
   rmSync(scratch, { recursive: true, force: true })
 }
 

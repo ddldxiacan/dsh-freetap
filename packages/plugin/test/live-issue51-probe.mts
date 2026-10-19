@@ -41,7 +41,7 @@ for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
   try {
     const stream = await adapter.stream({
       model: MODEL,
-      provider: 'opencode2dsh',
+      provider: 'dsh-opencode-free',
       messages: [{ role: 'user', content: [{ type: 'text', text: 'Reply with exactly: OK' }] }],
       reasoningEffort: 'high',
       temperature: 0,

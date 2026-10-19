@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"opencode2dsh/agent/internal/ids"
+	"dsh-opencode-free/agent/internal/ids"
 )
 
 const (
@@ -58,7 +58,7 @@ type modelMetadataCache struct {
 
 // ModelMetadataStore tracks models.dev pricing data and decides whether a
 // model id is free. Upstream it also rode proxy transports via a client
-// provider; opencode2dsh is direct-only, so the store uses its own client.
+// provider; dsh-opencode-free is direct-only, so the store uses its own client.
 type ModelMetadataStore struct {
 	mu        sync.RWMutex
 	models    map[string]ModelPrice

@@ -12,7 +12,7 @@ import { routingContext, type RoutingContext } from '../pool/dispatcher.ts'
 import { classifyStreamFailure, isRegionBlocked, shouldRotate } from '../pool/rotate.ts'
 
 /**
- * The TS adapter: registers as a DSH LlmAdapter for the `opencode2dsh` route
+ * The TS adapter: registers as a DSH LlmAdapter for the `dsh-opencode-free` route
  * and streams directly from the OpenCode Zen anonymous lane. The wire layer is
  * pi-ai's openai-completions implementation for most models (the same one DSH
  * uses for every OpenAI-compatible provider), plus pi-ai's openai-responses
@@ -23,7 +23,7 @@ import { classifyStreamFailure, isRegionBlocked, shouldRotate } from '../pool/ro
  * prepareCall/stream) — structural, no host import.
  */
 
-export const PROVIDER_ID = 'opencode2dsh'
+export const PROVIDER_ID = 'dsh-opencode-free'
 
 export interface ZenModelInfo {
   id: string
@@ -161,8 +161,8 @@ export const FREE_LANE_RETRY_POLICY = Object.freeze({
  * carry "timeout" so classifyStreamFailure maps them to 'transport' and
  * the rotate loop gets to move the session to a live exit.
  */
-export const WATCHDOG_FIRST_MESSAGE = 'opencode2dsh: first stream event timeout (exit silent before any response)'
-export const WATCHDOG_IDLE_MESSAGE = 'opencode2dsh: stream body idle timeout (exit went silent mid-response)'
+export const WATCHDOG_FIRST_MESSAGE = 'dsh-opencode-free: first stream event timeout (exit silent before any response)'
+export const WATCHDOG_IDLE_MESSAGE = 'dsh-opencode-free: stream body idle timeout (exit went silent mid-response)'
 
 /** Default watchdog windows (docs/ip-pool.md; test-injectable via constructor). */
 export const DEFAULT_FIRST_EVENT_MS = 30_000
@@ -690,13 +690,13 @@ export class ZenAdapter {
           const e = buffered[i] as PiEvent & { error?: { errorMessage?: string }; message?: { errorMessage?: string; stopReason?: string } }
           if (e.type === 'error' && e.error) {
             e.error.errorMessage = rotateStory.length > 1
-              ? `${e.error.errorMessage} (opencode2dsh 轮换 ${rotateStory.length - 1} 次后放弃: ${rotateStory.join(' -> ')})`
+              ? `${e.error.errorMessage} (dsh-opencode-free 轮换 ${rotateStory.length - 1} 次后放弃: ${rotateStory.join(' -> ')})`
               : e.error.errorMessage
             break
           }
           if (e.type === 'done' && e.message?.stopReason === 'error') {
             e.message.errorMessage = rotateStory.length > 1
-              ? `${e.message.errorMessage} (opencode2dsh 轮换 ${rotateStory.length - 1} 次后放弃: ${rotateStory.join(' -> ')})`
+              ? `${e.message.errorMessage} (dsh-opencode-free 轮换 ${rotateStory.length - 1} 次后放弃: ${rotateStory.join(' -> ')})`
               : e.message.errorMessage!
             break
           }

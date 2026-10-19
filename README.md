@@ -1,15 +1,15 @@
 <div align="center">
 
-# opencode2dsh
+# dsh-opencode-free
 
 **Free OpenCode Zen models, natively inside DSH (DeepSeek Harness).**
 
 No API key. No registration. No extra process.
 
-[![npm](https://img.shields.io/npm/v/@opencode2dsh%2Fdsh-plugin)](https://www.npmjs.com/package/@opencode2dsh/dsh-plugin)
-[![license](https://img.shields.io/npm/l/@opencode2dsh%2Fdsh-plugin)](https://github.com/FishBottle7/opencode2dsh/blob/master/LICENSE)
+[![npm](https://img.shields.io/npm/v/@dsh-opencode-free%2Fdsh-plugin)](https://www.npmjs.com/package/@dsh-opencode-free/dsh-plugin)
+[![license](https://img.shields.io/npm/l/@dsh-opencode-free%2Fdsh-plugin)](https://github.com/ddldxiacan/dsh-opencode-free/blob/master/LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen)](https://nodejs.org)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-blue)](https://github.com/FishBottle7/opencode2dsh)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-blue)](https://github.com/ddldxiacan/dsh-opencode-free)
 
 English | [简体中文](README.zh-CN.md)
 
@@ -17,15 +17,21 @@ English | [简体中文](README.zh-CN.md)
 
 ---
 
-opencode2dsh registers a native DSH `LlmAdapter` that streams directly from
+dsh-opencode-free registers a native DSH `LlmAdapter` that streams directly from
 [OpenCode Zen](https://opencode.ai/zen)'s **anonymous free lane** — the same
 models OpenCode's own CLI uses without an account, served to your DSH model
-picker as a regular provider called `opencode2dsh`.
+picker as a regular provider called `dsh-opencode-free`.
 
 Requests leave your machine looking exactly like traffic from the OpenCode
 CLI (same user agent, same correlation headers), and the model catalog stays
 fresh through a three-tier fallback chain. There is nothing to log into and
 nothing to host.
+
+> **Upgrading from `opencode2dsh`?** This project was renamed. The plugin now
+> installs as `@dsh-opencode-free/dsh-plugin` with the provider, settings entry
+> and data directory all under the new name. Your saved IP-pool settings and the
+> old `~/.opencode2dsh` cache are copied once on first start — see
+> [Renamed from opencode2dsh](#renamed-from-opencode2dsh).
 
 ## Highlights
 
@@ -40,9 +46,9 @@ nothing to host.
 
 ## Install
 
-This fork is installed from its own prebuilt release, so no build step and no
-toolchain is needed. **Read the three steps in order** — doing the install before
-step 2 fails silently, in a way that looks like success (see below).
+Installs from a prebuilt release, so no build step and no toolchain is needed.
+**Read the three steps in order** — doing the install before step 2 fails
+silently, in a way that looks like success (see below).
 
 **1. Make sure the profile exists.** Any `dsh plugin` command initializes it:
 
@@ -69,7 +75,7 @@ which is all that is needed. (Upstream ships the same two as `false`.)
 **3. Install:**
 
 ```sh
-dsh plugin --profile web add https://github.com/ddldxiacan/opencode2dsh/releases/latest/download/opencode2dsh-dsh-plugin.tgz
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
 ```
 
 The link is version-free on purpose, so it keeps tracking the newest release.
@@ -87,12 +93,12 @@ loads and no models appear. Nothing in the output says so.
 If you have already hit that, recover with a remove and re-add:
 
 ```sh
-dsh plugin --profile web remove @opencode2dsh/dsh-plugin
-dsh plugin --profile web add https://github.com/ddldxiacan/opencode2dsh/releases/latest/download/opencode2dsh-dsh-plugin.tgz
+dsh plugin --profile web remove @dsh-opencode-free/dsh-plugin
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
 ```
 
 To confirm the plugin is really registered, check that the profile's
-`package.json` lists `@opencode2dsh/dsh-plugin` under `dsh.profile.bundles` — not
+`package.json` lists `@dsh-opencode-free/dsh-plugin` under `dsh.profile.bundles` — not
 just under `dependencies`.
 
 ### Other ways to install
@@ -101,21 +107,20 @@ just under `dependencies`.
 URL. The Web page writes the same kind of approval and has its own bundle
 selection; the CLI steps above are the path verified here.
 
-⚠️ **Do not install this fork with `github:ddldxiacan/opencode2dsh`.** The
-repository root depends on `@opencode2dsh/dsh-plugin: ^0.3.1`, which resolves to
-the upstream npm build — that build predates the free-lane fix, so you would get
-the broken behaviour back. Installing the `packages/plugin` subdirectory instead
-(`#path:/packages/plugin`) makes pnpm run that package's build scripts, which it
-refuses without approval. The release tarball above is the path that works.
+⚠️ **Do not install with `github:ddldxiacan/dsh-opencode-free`.** The repository
+root is a private wrapper whose only dependency is
+`@dsh-opencode-free/dsh-plugin`; a git install resolves that range against the
+registry, and a package published only as a release tarball is not there. Use the
+release tarball above, or the npm package below once it exists.
 
-**From upstream npm** (unpatched — kept for reference):
+**From npm** (published builds):
 
 ```sh
-dsh plugin --profile web add @opencode2dsh/dsh-plugin
+dsh plugin --profile web add @dsh-opencode-free/dsh-plugin
 ```
 
 **Verify**: restart `dsh web`, open the model picker, and pick a model from
-the **opencode2dsh** group.
+the **dsh-opencode-free** group.
 
 Requires DSH (DeepSeek Harness) 0.1.7 or newer with a web profile (the IP 池
 settings page rides the 0.1.7 Plugins page contract); Node.js ≥ 20 (already
@@ -126,18 +131,18 @@ present if DSH runs); outbound HTTPS to `opencode.ai` and `models.dev`.
 Defaults work out of the box. Override via the profile's `cordis.patch.yml`:
 
 ```yaml
-- id: opencode2dsh
-  name: '@opencode2dsh/dsh-plugin'
+- id: dsh-opencode-free
+  name: '@dsh-opencode-free/dsh-plugin'
   config:
     mode: adapter        # adapter (default) | sidecar
-    providerId: opencode2dsh
+    providerId: dsh-opencode-free
     refreshSeconds: 300  # catalog refresh cadence
 ```
 
 | Option | Default | Description |
 | --- | --- | --- |
 | `mode` | `adapter` | `adapter`: native LlmAdapter streaming straight from Zen. `sidecar`: legacy local-agent mode, not bundled — build the agent from `legacy/agent` and pass `agentPath`. |
-| `providerId` | `opencode2dsh` | Provider name shown in DSH. |
+| `providerId` | `dsh-opencode-free` | Provider name shown in DSH. |
 | `refreshSeconds` | `300` | Live catalog refresh interval. Pricing metadata refreshes every 24 h. |
 | `agentPath` | auto-resolved | Sidecar only: path to the agent binary. |
 | `agentArgs` | — | Sidecar only: extra CLI args for the agent. |
@@ -182,7 +187,7 @@ https://opencode.ai/zen/v1        ← Authorization: Bearer public
 The plugin writes a health snapshot after every refresh round:
 
 ```
-~/.opencode2dsh/adapter-status.json
+~/.dsh-opencode-free/adapter-status.json
 ```
 
 ```json
@@ -199,7 +204,7 @@ The plugin writes a health snapshot after every refresh round:
 | --- | --- |
 | `403 FreeTierError` / "OpenCode's free tier can only be used from within OpenCode" | The upstream restricts free-tier clients. The plugin preserves the explanation instead of reporting an invalid API key. Use the supported OpenCode client or an official API service. |
 | Boot screen shows `Failed to load plugins … list slot "plugins.item" requires options.id`, or the IP 池 entry has no configuration page | Your DSH predates the 0.1.7 Plugins page contract. Upgrade DSH to 0.1.7 (latest recommended). On 0.1.6 and older the page never mounts (it is gated on `configForms.whileServed`) — model routing is unaffected. |
-| DSH 0.1.7/0.2 cannot start after plugin installation (`pending … settingsScope`) | Upgrade the plugin to 0.3.5. On DSH 0.2, configure IP pooling through the installed opencode2dsh row on the Plugins page. |
+| DSH 0.1.7/0.2 cannot start after plugin installation (`pending … settingsScope`) | Upgrade the plugin to 0.3.5. On DSH 0.2, configure IP pooling through the installed dsh-opencode-free row on the Plugins page. |
 | Only 3 models | Startup fetch raced your network; retries land within ~1 min. Check `adapter-status.json` for `lastError`. |
 | `lastError: "fetch failed"` persisting | Outbound HTTPS to `opencode.ai` blocked; check proxy/VPN rules. |
 | Rate-limit errors in chat (`429 … Endpoint is unavailable`) | The anonymous lane is quota-per-IP and free models are contended. Since the fix for [#51](https://github.com/FishBottle7/opencode2dsh/issues/51) the plugin's provider retry policy rides out 429 bursts silently (8 retries, ~1s→20s backoff, ≈90s worst case per step) instead of surfacing them; when contention still wins, lower the reasoning effort, pick a less contended `-free` model, or enable IP pooling (multi-exit rotation) on the plugin settings page. |
@@ -207,6 +212,40 @@ The plugin writes a health snapshot after every refresh round:
 | Muse reports `REGION_BLOCKED` / "This model is not available in your country" | Zen has rejected the current network region for this model. Plugin 0.3.5 preserves that explanation; older versions mislabeled the same 403 as an invalid API key. The anonymous lane does not need a personal key. Use a model available in your region. |
 | Connection error to `127.0.0.1:*` | A stale sidecar route shadows the adapter; plugin ≥ 0.2.1 removes it at startup. |
 | Install fails with `ERR_PNPM_IGNORED_BUILDS` | A transitive dependency of `pi-ai` (`@google/genai`, `protobufjs`) has build scripts that are not needed at runtime. Approve-or-decline them via the plugin market, or set both to `false` under `allowBuilds:` in the profile's `pnpm-workspace.yaml`. |
+
+## Renamed from opencode2dsh
+
+This project used to be called **opencode2dsh**. The rename is complete: the npm
+package, the DSH provider id, the settings entry and the data directory all use
+the new name `dsh-opencode-free`.
+
+Upgrading is automatic. On the first start after the update the plugin copies
+your state from the old name, once, without deleting anything:
+
+| State | Old location | New location |
+| --- | --- | --- |
+| Cache, health snapshot, sidecar token | `~/.opencode2dsh/` | `~/.dsh-opencode-free/` |
+| Saved IP-pool settings | `opencode2dsh:` section of `~/.dsh/settings.yaml` | `dsh-opencode-free:` section |
+
+Two things the migration deliberately does **not** do:
+
+- **It never deletes or moves the old state.** A downgrade keeps working, and a
+  failed migration can simply be retried on the next start.
+- **It never overwrites what you set under the new name.** Only keys missing
+  from the new section are copied; anything already configured there wins.
+
+After upgrading you will see the provider as **dsh-opencode-free** in the model
+picker. **Saved IP-pool settings appear on the second start**: the Loader
+resolves the entry's volatile `ipPool` value while composing a boot, so a copy
+made during that boot is read on the next one. The cache and health files take
+effect immediately. A deployment that cut over before this rename existed may
+still list a `opencode2dsh` entry under DSH's **Settings → Plugins**; remove that
+stale entry (an orphan `opencode2dsh` provider route left by a sidecar install is
+swept automatically at startup).
+
+If you prefer to start clean rather than migrate, delete `~/.opencode2dsh/` and
+the `opencode2dsh:` section of `~/.dsh/settings.yaml` before upgrading; the
+plugin then starts with defaults.
 
 ## Security
 
@@ -217,8 +256,8 @@ The plugin writes a health snapshot after every refresh round:
 ## Development
 
 ```sh
-git clone https://github.com/FishBottle7/opencode2dsh.git
-cd opencode2dsh/packages/plugin
+git clone https://github.com/ddldxiacan/dsh-opencode-free.git
+cd dsh-opencode-free/packages/plugin
 pnpm install
 pnpm typecheck && pnpm test
 pnpm build                    # bundle to lib/
@@ -231,6 +270,11 @@ Releasing: `pnpm pack` in `packages/plugin` (prepack builds and syncs docs).
 
 ## Acknowledgments
 
+- [**opencode2dsh**](https://github.com/FishBottle7/opencode2dsh) by
+  [@FishBottle7](https://github.com/FishBottle7) — the upstream project this one
+  was forked from and is renamed after. Its architecture, catalog fallback chain
+  and request-disguise work are the foundation of this fork; issue numbers cited
+  above refer to that repository.
 - [**opencode2api**](https://github.com/jasonxu114514/opencode2api) by
   [@jasonxu114514](https://github.com/jasonxu114514) — the legacy Go sidecar
   in `legacy/agent` is a port of its anonymous-lane implementation, and the
@@ -251,4 +295,4 @@ Releasing: `pnpm pack` in `packages/plugin` (prepack builds and syncs docs).
 
 ## License
 
-[MIT](./LICENSE) © FishBottle7
+[MIT](./LICENSE) © 2026 ddldxiacan, based on opencode2dsh © FishBottle7

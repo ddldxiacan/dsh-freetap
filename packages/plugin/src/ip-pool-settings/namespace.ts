@@ -32,7 +32,7 @@ import { resolveSubscriptionUrls } from './subscription-urls.ts'
  * Settings namespace owned by this plugin: the Loader entry id declared by
  * `cordis.patch.yml`. Mirrored by `SETTINGS_NAMESPACE` in src/client/index.ts.
  */
-export const IP_POOL_NAMESPACE = 'opencode2dsh'
+export const IP_POOL_NAMESPACE = 'dsh-opencode-free'
 
 /**
  * cosmokit's volatile config reference, structurally typed.

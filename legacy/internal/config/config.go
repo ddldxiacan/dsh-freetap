@@ -72,7 +72,7 @@ func LoadConfig(path string) (Config, error) {
 		return Config{}, fmt.Errorf("parse %s: %w", path, err)
 	}
 	cfg := Config{
-		// opencode2dsh defaults: loopback-only random port, anonymous lane on.
+		// dsh-opencode-free defaults: loopback-only random port, anonymous lane on.
 		Listen:      "127.0.0.1:0",
 		Anonymous:   true,
 		Upstream:    UpstreamConfig{Zen: "https://opencode.ai/zen"},
@@ -108,10 +108,10 @@ func NormalizeConfig(path string, cfg Config) (Config, error) {
 	if !isLoopbackListen(cfg.Listen) {
 		return Config{}, fmt.Errorf("listen must bind a loopback address (127.0.0.1, ::1, or localhost), got %q", cfg.Listen)
 	}
-	// opencode2dsh is the anonymous lane only: the authenticated upstream
+	// dsh-opencode-free is the anonymous lane only: the authenticated upstream
 	// fallback (zen_keys/go_keys) is intentionally not configurable here.
 	if !cfg.Anonymous {
-		return Config{}, errors.New("anonymous must be true; opencode2dsh does not configure upstream keys")
+		return Config{}, errors.New("anonymous must be true; dsh-opencode-free does not configure upstream keys")
 	}
 	cfg.Upstream.Zen = strings.TrimSpace(cfg.Upstream.Zen)
 	u, err := url.Parse(strings.TrimSpace(cfg.Upstream.Zen))
@@ -153,7 +153,7 @@ func NormalizeConfig(path string, cfg Config) (Config, error) {
 	return cfg, nil
 }
 
-// isLoopbackListen enforces the opencode2dsh invariant that the agent never
+// isLoopbackListen enforces the dsh-opencode-free invariant that the agent never
 // exposes a non-loopback interface. The 127.0.0.0/8 range, ::1, and localhost
 // are accepted.
 func isLoopbackListen(listen string) bool {

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"opencode2dsh/agent/internal/ids"
+	"dsh-opencode-free/agent/internal/ids"
 )
 
 type Protocol string
@@ -44,7 +44,7 @@ type CatalogSnapshot struct {
 }
 
 // ModelCatalog is the trimmed opencode2api catalog: one Zen tier, the anonymous
-// decision glue, and the opencode2dsh S3 static fallback. Go-tier state,
+// decision glue, and the dsh-opencode-free S3 static fallback. Go-tier state,
 // protocol capability tracking, and user protocol overrides are not ported
 // because the gateway speaks Chat end to end.
 type ModelCatalog struct {

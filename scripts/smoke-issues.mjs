@@ -25,7 +25,7 @@ const { Config: pluginSchema, ...configuredEntry } = entry
 const schema = new HostSchema(pluginSchema.toJSON())
 const savedFetch = globalThis.fetch
 const savedHomedir = os.homedir
-const scratch = await mkdtemp(join(os.tmpdir(), 'opencode2dsh-issues-'))
+const scratch = await mkdtemp(join(os.tmpdir(), 'dsh-opencode-free-issues-'))
 const ctx = new Context()
 const routes = new Map()
 const seenUAs = []
@@ -99,7 +99,7 @@ try {
   new WebServer(ctx)
   ctx.on('llm/adapters-updated', () => {
     topologyEvents++
-    if (llm.listProviders().length) listReads.push(llm.listModels('opencode2dsh').then((rows) => {
+    if (llm.listProviders().length) listReads.push(llm.listModels('dsh-opencode-free').then((rows) => {
       currentList = rows.map((row) => row.id)
     }))
   })
@@ -107,7 +107,7 @@ try {
   const plugin = ctx.plugin(configuredEntry, config)
   await plugin.await()
   assert.equal(plugin.state, 2)
-  const cold = (await llm.listModels('opencode2dsh')).map((row) => row.id)
+  const cold = (await llm.listModels('dsh-opencode-free')).map((row) => row.id)
   assert.ok(!cold.includes('space-bunny-free'), 'first read hit the real 4s warm deadline')
   releaseZen()
   await until(() => currentList.includes('space-bunny-free'), 'picker republished after late Zen response')
@@ -120,7 +120,7 @@ try {
     ctx.emit('loader/volatile-update')
   }
   const status = async () => {
-    const response = await savedFetch(`${httpOrigin}/api/opencode2dsh/ip-pool/status`, {
+    const response = await savedFetch(`${httpOrigin}/api/dsh-opencode-free/ip-pool/status`, {
       method: 'POST', headers: { origin: httpOrigin, 'content-type': 'application/json' }, body: '{}',
     })
     assert.equal(response.status, 200)
@@ -180,6 +180,6 @@ try {
   syncBuiltinESMExports()
   fixture.closeAllConnections()
   await new Promise((done) => fixture.close(done))
-  assert.ok(scratch.startsWith(join(os.tmpdir(), 'opencode2dsh-issues-')))
+  assert.ok(scratch.startsWith(join(os.tmpdir(), 'dsh-opencode-free-issues-')))
   await rm(scratch, { recursive: true, force: true })
 }

@@ -1,6 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
+
+### Changed
+
+- **Renamed `opencode2dsh` -> `dsh-opencode-free`.** The npm package is now
+  `@dsh-opencode-free/dsh-plugin`, and the provider id, the DSH settings entry id,
+  the IP-pool bridge prefix (`/api/dsh-opencode-free/ip-pool`) and the data
+  directory (`~/.dsh-opencode-free`) all follow it. The token env var becomes
+  `DSH_OPENCODE_FREE_TOKEN`. Existing installs upgrade in place: on first start
+  the old `~/.opencode2dsh/` files and the old `opencode2dsh:` settings section in
+  `~/.dsh/settings.yaml` are copied to the new names once, without deleting or
+  overwriting anything the user has already set under the new name. A stale
+  `opencode2dsh` llm-pi-ai route left by a sidecar install is swept at startup.
+  Settings are read from the settings DOCUMENT rather than `settings.describe()`:
+  after the rename the retired namespace is no longer registered, so the service
+  cannot see it. Copied settings take effect on the second start, because the
+  Loader resolves the volatile `ipPool` value while composing the boot that runs
+  the migration.
 
 ### Fixed
 

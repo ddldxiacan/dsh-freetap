@@ -1,44 +1,36 @@
-# Market submission draft — ddldxiacan/opencode2dsh
+# Market submission draft — ddldxiacan/dsh-opencode-free
 #
-# NOT SUBMITTED YET — two findings have to be settled first:
+# NOT SUBMITTABLE YET — the repository is PRIVATE. The registry links a public
+# URL and installs from a release tarball; neither resolves for a private repo.
+# This draft is prepared so the entry is ready the day the repo is published.
 #
-#  1. Age floor. The registry's submission gate requires the repository to be at
-#     least 1 day old. ddldxiacan/opencode2dsh was created 2026-10-16 16:49:50Z,
-#     so it clears the bar at 2026-10-17 16:49:50Z (UTC) = 2026-10-18 00:49:50
-#     (+08:00). Submitting before that shows a red gate rather than a verdict.
-#
-#  2. Duplicate. The upstream plugin is already listed — its entry is
-#     data/plugins/FishBottle7__opencode2dsh--packages-plugin.yml, and it installs
-#     @opencode2dsh/dsh-plugin@0.3.12 straight from npm. The registry's duplicate
-#     rule keeps the earlier slot as a *tiebreaker*, not as tenure: a fork is
-#     listed "when it is the better-kept one, or when it genuinely adds
-#     something". The case for this fork is that the npm build does NOT carry the
-#     free-lane fix and this tarball does — but that fix is identical to the still
-#     -open upstream PR #80, so a maintainer may read the fork as republishing
-#     someone else's in-flight work. Settlement belongs to the author, not here.
+# Lineage: this project was renamed from its fork name `opencode2dsh` to
+# `dsh-opencode-free`. The upstream project is FishBottle7/opencode2dsh, which
+# already has a registry entry installing its published npm build. The case for
+# this entry is that it is independently maintained and carries fixes the
+# published upstream build does not.
 #
 # Target registry: https://github.com/awesome-dsh-plugin/awesome-dsh-plugin
-# Path to add: data/plugins/ddldxiacan__opencode2dsh--packages-plugin.yml
+# Path to add: data/plugins/ddldxiacan__dsh-opencode-free--packages-plugin.yml
 #   Monorepo form, following contributing.md ("owner/repo#subname", filename
 #   owner__repo--packages-plugin). The url MUST point at the subdirectory: the
-#   repository ROOT depends on `@opencode2dsh/dsh-plugin: ^0.3.1`, which resolves
-#   to upstream's published npm build, i.e. a root entry would install the OLD
-#   code with no fix in it.
+#   repository root is a wrapper whose dependency installs the plugin, so a root
+#   entry would not name the installable unit.
 #
 # tarball: version-free asset name on purpose — `latest/download/` resolves
 # `latest` at request time but takes the filename literally, so a versioned asset
-# name works on submission day and 404s on the next release. Verified 2026-10-17:
-# HTTP 200, 122398 bytes. It is the smoother install path anyway, because this
-# repo does not commit packages/plugin/lib/, so a source install would hit pnpm's
-# build-approval step (ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED).
+# name works on submission day and 404s on the next release. It is also the
+# smoother install path, because this repo does not commit packages/plugin/lib/,
+# so a source install would hit pnpm's build-approval step
+# (ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED).
 #
 # The description stays a claim the registry checks against the code — no
 # superlatives, no numbers that are not true of the tree.
 
-url: https://github.com/ddldxiacan/opencode2dsh/tree/master/packages/plugin
-name: ddldxiacan/opencode2dsh
+url: https://github.com/ddldxiacan/dsh-opencode-free/tree/master/packages/plugin
+name: ddldxiacan/dsh-opencode-free#packages/plugin
 category: model
-tarball: https://github.com/ddldxiacan/opencode2dsh/releases/latest/download/opencode2dsh-dsh-plugin.tgz
+tarball: https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
 description:
-  en: 'Maintained fork of opencode2dsh that registers OpenCode Zen free models in DeepSeek Harness with no API key, carrying the free lane on the /inference host, the post-2026-10-15 session-gate header set with real gate-tool schemas, and one replay on the sibling host when the lane refuses.'
-  zh: 'opencode2dsh 的维护分支：把 OpenCode Zen 免费模型接入 DeepSeek Harness，无需 API Key。免费通道走 /inference 主机，带 2026-10-15 之后的会话门请求头与真实 gate 工具 schema，被拒时在姊妹主机重放一次。'
+  en: 'Registers OpenCode Zen free models in DeepSeek Harness with no API key, carrying the free lane on the /inference host, the post-2026-10-15 session-gate header set with real gate-tool schemas, and one replay on the sibling host when the lane refuses. Independently maintained rename of opencode2dsh.'
+  zh: '把 OpenCode Zen 免费模型接入 DeepSeek Harness，无需 API Key。免费通道走 /inference 主机，带 2026-10-15 之后的会话门请求头与真实 gate 工具 schema，被拒时在姊妹主机重放一次。opencode2dsh 的独立维护改名分支。'

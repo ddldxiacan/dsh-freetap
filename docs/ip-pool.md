@@ -1,4 +1,4 @@
-# opencode2dsh IP 池与出口路由 — 架构设计
+# dsh-opencode-free IP 池与出口路由 — 架构设计
 
 > 状态：v1 草案（2026-09-04）。实现前定稿；上游锚点在编写时逐一核实。
 > 关联：`docs/design.md`（总体架构，特别是 §9.2 多出口收缩）、`docs/ts-adapter.md`（当前 adapter 形态）。
@@ -31,7 +31,7 @@ design.md §9.2 曾把「多出口」定为灰色能力并默认关闭（当时�
 ```
 ┌─────────────────────────── DSH 主进程 (Node.js) ───────────────────────────┐
 │                                                                             │
-│  dsh-llm (官方) ──dispatch──► opencode2dsh adapter (现 zen-adapter.ts)       │
+│  dsh-llm (官方) ──dispatch──► dsh-opencode-free adapter (现 zen-adapter.ts)       │
 │                                    │                                        │
 │                     pi-ai wire 层 (openai-completions, OpenAI SDK)           │
 │                                    │                                        │
@@ -471,21 +471,21 @@ POST {zen}/v1/chat/completions
 
 全部进 settings namespace，设置页可调（maxConcurrentProbes 也开放：有些用户宁可慢也不并发）。
 
-## 5. 设置页（DSH 设置 → 插件 → opencode2dsh 详情）
+## 5. 设置页（DSH 设置 → 插件 → dsh-opencode-free 详情）
 
-复刻 dsh-llm-proxy 验证过的三层结构，但按本机宿主实测裁剪（2026-09-05 基于 `@deepseek-ai/dsh@0.1.1-rc.2`；**0.1.7 修订**：入口从旧的「可配置插件」tab 移到插件详情页的 `plugins.item` 槽位，namespace 变成 Loader entry id `opencode2dsh`，可编辑字段只有 `ipPool`）。
+复刻 dsh-llm-proxy 验证过的三层结构，但按本机宿主实测裁剪（2026-09-05 基于 `@deepseek-ai/dsh@0.1.1-rc.2`；**0.1.7 修订**：入口从旧的「可配置插件」tab 移到插件详情页的 `plugins.item` 槽位，namespace 变成 Loader entry id `dsh-opencode-free`，可编辑字段只有 `ipPool`）。
 
-- **settings 读写走官方通道，不建兜底**：宿主 `settings.describe/mutate` 对**所有已注册 namespace** 服务（源码核实无 allowlist；rc.6 才有硬编码清单），所以 dsh-llm-proxy 那套「官方 scope 不可用时切自建 bridge」的 compat 层我们**不做**。**2026-09-19 修订**：`ctx.settingsScope` 服务已被 DSH 移除，0.1.7 起改由 `@deepseek-ai/dsh-client-ui-settings` 提供的 `configForms` 服务承担；注入令牌必须同步改成 `configForms`，否则客户端停在 `pending (waiting for service: settingsScope)`、插件整体不激活。**0.1.7 终版修订**：卡片不再自己 `ctx.configForms.get(...)`，改用插件页交给 `view:'page'` 的 `ConfigPageForm`（`{ state, mutate }`），写路径 `form.mutate(ops, state.revision)`（字段级 path op，revision fencing 由 ConfigFormController 负责）；页面挂载门控用 `ctx.configForms.whileServed(['opencode2dsh'], …)`，宿主不提供该 entry 设置时整张卡片不出现。
-- **可编辑字段只有 `ipPool`**：宿主 `volatileForm(schema)` 只保留**最近一个 volatile 祖先**下的字段（`packages/settings/settings/src/schema.ts`），所以被服务的表单值是 `{ ipPool: … }` 而非 namespace 本身——每条写路径都带 `ipPool` 前缀（`['ipPool', field]`）。namespace 也是 Loader entry id（`opencode2dsh`），不再是单独的 `ip-pool` id。
+- **settings 读写走官方通道，不建兜底**：宿主 `settings.describe/mutate` 对**所有已注册 namespace** 服务（源码核实无 allowlist；rc.6 才有硬编码清单），所以 dsh-llm-proxy 那套「官方 scope 不可用时切自建 bridge」的 compat 层我们**不做**。**2026-09-19 修订**：`ctx.settingsScope` 服务已被 DSH 移除，0.1.7 起改由 `@deepseek-ai/dsh-client-ui-settings` 提供的 `configForms` 服务承担；注入令牌必须同步改成 `configForms`，否则客户端停在 `pending (waiting for service: settingsScope)`、插件整体不激活。**0.1.7 终版修订**：卡片不再自己 `ctx.configForms.get(...)`，改用插件页交给 `view:'page'` 的 `ConfigPageForm`（`{ state, mutate }`），写路径 `form.mutate(ops, state.revision)`（字段级 path op，revision fencing 由 ConfigFormController 负责）；页面挂载门控用 `ctx.configForms.whileServed(['dsh-opencode-free'], …)`，宿主不提供该 entry 设置时整张卡片不出现。
+- **可编辑字段只有 `ipPool`**：宿主 `volatileForm(schema)` 只保留**最近一个 volatile 祖先**下的字段（`packages/settings/settings/src/schema.ts`），所以被服务的表单值是 `{ ipPool: … }` 而非 namespace 本身——每条写路径都带 `ipPool` 前缀（`['ipPool', field]`）。namespace 也是 Loader entry id（`dsh-opencode-free`），不再是单独的 `ip-pool` id。
 - **bridge 只补官方通道做不到的两件事**：池运行时没有 settings 对应物的读（`/status`：四态、出口表、封禁表、Prober 进度 x/y）与动作（`/probe`：批量探活/单出口探活/手动 refill 入队）。**探测与状态必须宿主侧跑**：要走真实 undici/凭据路径。
 - 平台 seeds 实测（web-frontend dist 内核表）：`react`、`react/jsx-runtime`、`react-dom`、`react-dom/client`、`@deepseek-ai/cordis`、`@deepseek-ai/dsh-client-ui-slots`、`@deepseek-ai/dsh-client-ui-primitives`。`@deepseek-ai/dsh-client-runtime/client` 在 0.1.7 宿主上已不在 seed 表内，客户端半也不再引用它（Context 类型直接取自 `@deepseek-ai/cordis`），故 externals 收敛为上表七项。
 
 ```
-浏览器侧 React 页面（plugins.item slot，id = 'opencode2dsh'，lib/client.js 经 __ModuleLoader__ 注入）
+浏览器侧 React 页面（plugins.item slot，id = 'dsh-opencode-free'，lib/client.js 经 __ModuleLoader__ 注入）
    │ 配置读写：官方 configForms（apiproxy settings.describe/mutate RPC，路径 ['ipPool', field]）
    │ 状态/动作：same-origin fetch
    ▼
-宿主侧 bridge（webServer.register，/api/opencode2dsh/ip-pool/{status,probe}，loopback-only）
+宿主侧 bridge（webServer.register，/api/dsh-opencode-free/ip-pool/{status,probe}，loopback-only）
    │ 读 ExitPool/Prober/SubscriptionFetcher 活对象；动作入 Prober 两级调度队列
    ▼
 settings namespace `ip-pool`（applies: live，保存即热更新：换 pinned/改订阅列表/改并发上限均不重启）
@@ -544,7 +544,7 @@ dsh-llm-proxy 的 bridge 有四个面（describe/mutate/models/test），前两�
 - `POST /status`：池状态机快照——四态徽章 + 可用/容量 + 来源计数（free/manual/subscription）+ 两级健康（出口表：地址/来源/位置/延迟/质量/出口 IP/状态/冷却到期时刻 + 封禁表：(出口, 模型, bannedAt)）+ Prober 队列进度（enqueued/completed/inFlight/queued）+ refill 上轮摘要 + 订阅层状态（running、pendingConversion 数、convertedAdmitted、lastFetch、lastError——**不含 URL 明文**）。返回结构化 JSON，卡片 3s 轮询（探活、补充或订阅刷新进行中 1s）。
 - `POST /probe`：`{scope: 'all'|'exit'|'refill'|'subscriptions', exitId?}`。`all`：全池出口 × probeModels 的周期探测一次（入 Prober 队列，返回队列长度，前端看 /status 进度）；`exit`：单出口插队探测；`refill`：手动触发一次状态机 refill 轮（免费源抓取+准入）；`subscriptions`：手动触发一次订阅拉取+转换轮（重取已配置的订阅 URL，加密节点交 sing-box，对应卡片「立即刷新」；未配置 URL 时返回 `no-subscriptions`，拉取失败返回 `subscription-refresh-failed`；正在刷新时等待同一轮完成）。两条手动轮次刻意分开：`refill` 抓的是公共免费代理源，`subscriptions` 只碰用户自己的订阅，互不代替。探测在宿主侧跑：走 Prober 两级调度（同出口串行 + 全局上限），不碰浏览器。
 - 路由护栏照抄 dsh-llm-proxy settings.js：loopback socket + 规范 Host + same-origin 三重校验、JSON body 上限、`{ok, code, message}` 信封。**不做 settings 代理面**（官方通道在）。
-- 页面注册进 `plugins.item`（`@deepseek-ai/dsh-client-ui-plugin-manager` 拥有的 list slot，`id: 'opencode2dsh'`）；插件页拥有卡片外框、标题、one-liner 与保存按钮，`view:'summary'` 返回描述、`view:'page'` 返回表单，保存走共享 `SettingsForm` 外框。挂载门控 `ctx.configForms.whileServed(['opencode2dsh'], …)`，官方 form ready 之前不渲染。0.1.7 之前的 keyed `settings.plugin.item` 与双形态兼容分支都已删除。
+- 页面注册进 `plugins.item`（`@deepseek-ai/dsh-client-ui-plugin-manager` 拥有的 list slot，`id: 'dsh-opencode-free'`）；插件页拥有卡片外框、标题、one-liner 与保存按钮，`view:'summary'` 返回描述、`view:'page'` 返回表单，保存走共享 `SettingsForm` 外框。挂载门控 `ctx.configForms.whileServed(['dsh-opencode-free'], …)`，官方 form ready 之前不渲染。0.1.7 之前的 keyed `settings.plugin.item` 与双形态兼容分支都已删除。
 
 ### 5.4 客户端构建
 
@@ -595,7 +595,7 @@ packages/plugin/
 │   │   ├── namespace.ts               # 导出 Config（ipPool 单一 volatile 节点）+ VolatileRef 读
 │   │   └── bridge.ts                  # webServer 路由（/status /probe，loopback-only）
 │   └── client/                        # IP-5 浏览器半边（新）
-│       ├── index.ts                   # configForms.whileServed + slots.inject('plugins.item', id: 'opencode2dsh')
+│       ├── index.ts                   # configForms.whileServed + slots.inject('plugins.item', id: 'dsh-opencode-free')
 │       ├── IpPoolCard.tsx             # 页给的 ConfigPageForm；写路径 ['ipPool', field]
 │       ├── locales.ts                 # zh/en
 │       ├── ip-pool.module.css

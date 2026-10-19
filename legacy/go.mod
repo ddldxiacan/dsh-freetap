@@ -1,3 +1,3 @@
-module opencode2dsh/agent
+module dsh-opencode-free/agent
 
 go 1.24

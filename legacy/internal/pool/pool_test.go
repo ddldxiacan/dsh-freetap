@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"opencode2dsh/agent/internal/config"
+	"dsh-opencode-free/agent/internal/config"
 )
 
 func newDirectPool(t *testing.T, cooldown time.Duration) (*TransportPool, *AnonymousPool) {

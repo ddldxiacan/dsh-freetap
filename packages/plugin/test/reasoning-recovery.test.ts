@@ -8,7 +8,7 @@ import type { HarnessChunk, PiDoneMessage, PiEvent } from '../src/adapter/events
 import type { HarnessGenerateOptions } from '../src/adapter/messages.ts'
 
 const options: HarnessGenerateOptions = {
-  provider: 'opencode2dsh',
+  provider: 'dsh-opencode-free',
   model: 'mimo-v2.6-flash-free',
   messages: [{ role: 'user', content: [{ type: 'text', text: 'Calculate 17 * 19.' }] }],
   reasoningEffort: 'high',
@@ -17,7 +17,7 @@ const options: HarnessGenerateOptions = {
 
 function message(overrides: Partial<PiDoneMessage> = {}): PiDoneMessage {
   return {
-    api: 'openai-completions', provider: 'opencode2dsh', model: options.model,
+    api: 'openai-completions', provider: 'dsh-opencode-free', model: options.model,
     content: [{ type: 'thinking', thinking: 'Working it out' }],
     stopReason: 'length',
     usage: { input: 10, output: 64, cacheRead: 3, cacheWrite: 2, totalTokens: 79 },

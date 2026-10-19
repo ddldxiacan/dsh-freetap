@@ -16,12 +16,12 @@ import (
 	"strings"
 	"time"
 
-	"opencode2dsh/agent/internal/catalog"
-	"opencode2dsh/agent/internal/config"
-	"opencode2dsh/agent/internal/convert"
-	"opencode2dsh/agent/internal/ids"
-	"opencode2dsh/agent/internal/obs"
-	"opencode2dsh/agent/internal/pool"
+	"dsh-opencode-free/agent/internal/catalog"
+	"dsh-opencode-free/agent/internal/config"
+	"dsh-opencode-free/agent/internal/convert"
+	"dsh-opencode-free/agent/internal/ids"
+	"dsh-opencode-free/agent/internal/obs"
+	"dsh-opencode-free/agent/internal/pool"
 )
 
 const maxRequestBody = 32 << 20
@@ -208,7 +208,7 @@ func (g *Gateway) handleInference(external catalog.Protocol) http.HandlerFunc {
 			return
 		}
 		if !g.catalog.Supported(model) {
-			writeAPIError(w, external, http.StatusBadRequest, "the model uses an upstream protocol that opencode2dsh does not expose", "invalid_request_error", "model")
+			writeAPIError(w, external, http.StatusBadRequest, "the model uses an upstream protocol that dsh-opencode-free does not expose", "invalid_request_error", "model")
 			return
 		}
 		route, err := g.catalog.Route(model, g.cfg.Anonymous)
@@ -256,7 +256,7 @@ func (g *Gateway) handleInference(external catalog.Protocol) http.HandlerFunc {
 				usageReported = observer.Reported()
 			} else {
 				// Cross-protocol transcoding is an interface placeholder in
-				// opencode2dsh; the branch is unreachable while the gateway
+				// dsh-opencode-free; the branch is unreachable while the gateway
 				// only routes Chat.
 				err = convert.NoTranscode()
 			}
@@ -274,7 +274,7 @@ func (g *Gateway) handleInference(external catalog.Protocol) http.HandlerFunc {
 			return
 		}
 		if external != route.Protocol {
-			g.logger.Warn("response protocol conversion is not available in opencode2dsh", "component", "conversion", "event", "response_conversion_unavailable", "request_id", reqIDs.Request, "model", model)
+			g.logger.Warn("response protocol conversion is not available in dsh-opencode-free", "component", "conversion", "event", "response_conversion_unavailable", "request_id", reqIDs.Request, "model", model)
 			writeAPIError(w, external, http.StatusBadGateway, "unsupported upstream response", "upstream_error", reqIDs.Request)
 			return
 		}
@@ -285,7 +285,7 @@ func (g *Gateway) handleInference(external catalog.Protocol) http.HandlerFunc {
 }
 
 // doAnonymousUpstream is gateway.go:424-483 with the multi-layer semantics
-// removed: opencode2dsh has no authenticated fallback, so exhausting the
+// removed: dsh-opencode-free has no authenticated fallback, so exhausting the
 // proxy cursor is final. It tries every currently available proxy at most
 // once; only a successful response ends the attempt loop.
 func (g *Gateway) doAnonymousUpstream(ctx context.Context, route catalog.ModelRoute, body []byte, reqIDs ids.RequestIDs) (*http.Response, error) {

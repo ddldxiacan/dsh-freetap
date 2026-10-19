@@ -208,5 +208,5 @@ export async function* toStreamChunks(
         return
     }
   }
-  throw new Error('opencode2dsh: pi-ai event stream ended without done/error')
+  throw new Error('dsh-opencode-free: pi-ai event stream ended without done/error')
 }
