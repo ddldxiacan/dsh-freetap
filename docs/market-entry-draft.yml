@@ -1,8 +1,9 @@
 # Market submission draft — ddldxiacan/dsh-opencode-free
 #
-# NOT SUBMITTABLE YET — the repository is PRIVATE. The registry links a public
-# URL and installs from a release tarball; neither resolves for a private repo.
-# This draft is prepared so the entry is ready the day the repo is published.
+# Repository is PUBLIC, the release asset downloads anonymously (verified
+# 2026-10-19: HTTP 200, 128166 bytes), and the `dsh-plugin` topic is set. The
+# only remaining gate is the registry's 1-day repository-age rule: created
+# 2026-10-19, so submit on or after 2026-10-20.
 #
 # Lineage: this project was renamed from its fork name `opencode2dsh` to
 # `dsh-opencode-free`. The upstream project is FishBottle7/opencode2dsh, which

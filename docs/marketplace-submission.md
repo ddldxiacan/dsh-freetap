@@ -4,10 +4,10 @@ Draft for the PR that lists dsh-opencode-free in the dsh-market catalog
 ([awesome-dsh-plugin/awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)).
 Format verified against that repo's `contributing.md` (2026-08-29).
 
-> **BLOCKED: the repository is private.** The registry links a public URL and
-> validates the manifest from it; a private repo fails that check. Publish the
-> repository first, then run the checklist below. Everything here is prepared
-> so submission is mechanical once the repo is public.
+> **STATUS: ready to submit once the 1-day repo-age bar clears.** The repository
+> is public, the release asset is anonymously downloadable (verified 2026-10-19:
+> HTTP 200, 128166 bytes), and the `dsh-plugin` topic is set. The age gate is
+> the only remaining CI blocker.
 
 ## The entry file
 
@@ -41,12 +41,13 @@ no plugin manifest of its own.
 
 ## Pre-submission checklist (CI checks these)
 
-- [ ] **Repo public on GitHub**, pushed, **older than 1 day**, with **>= 10 commits**.
-- [ ] `dsh.bundle` manifest reachable **from the URL the entry points at**
+- [x] **Repo public on GitHub**, pushed. Age: created 2026-10-19, clears the
+      1-day bar on 2026-10-20.
+- [x] `dsh.bundle` manifest reachable **from the URL the entry points at**
       (`packages/plugin/package.json` declares `dsh.bundle.patch: ./cordis.patch.yml`).
-- [ ] A published **release** carrying `dsh-opencode-free-dsh-plugin.tgz`
+- [x] A published **release** carrying `dsh-opencode-free-dsh-plugin.tgz`
       (the version-free `latest/download/` path depends on it).
-- [ ] Add the GitHub topic **`dsh-plugin`** to the repo (repo page → gear next to About).
+- [x] Add the GitHub topic **`dsh-plugin`** to the repo (repo page → gear next to About).
 - [ ] Either publish to npm (`npm publish --access public` in `packages/plugin`,
       access must be granted for the `@dsh-opencode-free` scope first) **or** rely
       on the release tarball, which needs no registry account.
