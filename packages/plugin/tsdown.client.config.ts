@@ -14,11 +14,15 @@
  */
 import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { basename, dirname, resolve as resolvePath, sep } from 'node:path'
+import { basename, dirname, relative, resolve as resolvePath, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { transform } from 'lightningcss'
 import type { UserConfig } from 'tsdown'
 
 const ID = '@dsh-opencode-free/dsh-plugin'
+
+/** This package's root; CSS-module hashes are computed from paths relative to it. */
+const PACKAGE_ROOT = dirname(fileURLToPath(import.meta.url))
 
 /**
  * Browser platform modules the shell seeds into the frozen module table
@@ -89,8 +93,14 @@ const config: UserConfig = {
       const fileId = virtualId.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
       this.addWatchFile(fileId)
       const source = await readFile(fileId)
+      // `[hash]` is derived from the filename handed to lightningcss, so an
+      // absolute path makes the class names depend on where the checkout lives
+      // (and therefore on the OS: CI's /home/runner vs a Windows E:\ checkout).
+      // The committed bundle must be identical wherever it is built, so hash the
+      // repository-relative path instead.
+      const hashName = relative(PACKAGE_ROOT, fileId).split(sep).join('/')
       const { code, exports: cssExports } = transform({
-        filename: fileId,
+        filename: hashName,
         code: source,
         cssModules: { pattern: '[hash]_[local]' },
         minify: true,
