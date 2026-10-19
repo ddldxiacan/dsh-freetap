@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck, test, and verify prebuilt output
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/plugin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: packages/plugin/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build (server + client)
+        run: |
+          pnpm build
+          pnpm build:client
+
+      # A `github:` install cannot run a build (pnpm blocks git-dependency
+      # prepare scripts), so the built output must be committed. If a source
+      # change lands without regenerating it, every `github:` install would
+      # silently ship stale code — fail here instead.
+      - name: Prebuilt output must be committed and current
+        working-directory: .
+        run: |
+          if [ -n "$(git status --porcelain -- packages/plugin/lib)" ]; then
+            echo "::error::packages/plugin/lib is stale. Run 'pnpm build && pnpm build:client' in packages/plugin and commit the result."
+            git status --porcelain -- packages/plugin/lib
+            git --no-pager diff --stat -- packages/plugin/lib
+            exit 1
+          fi
+          echo "Prebuilt output is in sync with src/."
+
+      - name: Pack integrity
+        run: npm pack --dry-run

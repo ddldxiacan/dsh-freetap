@@ -107,13 +107,23 @@ just under `dependencies`.
 URL. The Web page writes the same kind of approval and has its own bundle
 selection; the CLI steps above are the path verified here.
 
-⚠️ **Do not install with `github:ddldxiacan/dsh-opencode-free`.** The repository
-root is a private wrapper whose only dependency is
-`@dsh-opencode-free/dsh-plugin`; a git install resolves that range against the
-registry, and a package published only as a release tarball is not there. Use the
-release tarball above, or the npm package below once it exists.
+**From GitHub directly** (no registry involved):
 
-**From npm** (published builds):
+```sh
+dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free
+```
+
+This works because the repository root *is* the installable plugin: it carries
+the `dsh` manifest, and the built output is committed under
+`packages/plugin/lib/`. A git install cannot run a build — pnpm blocks prepare
+scripts for git dependencies — so shipping the build is what makes this path
+work. Pinning a tag is recommended for stability:
+
+```sh
+dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free#v0.4.0
+```
+
+**From npm** (once the package is published):
 
 ```sh
 dsh plugin --profile web add @dsh-opencode-free/dsh-plugin
@@ -122,17 +132,42 @@ dsh plugin --profile web add @dsh-opencode-free/dsh-plugin
 **Verify**: restart `dsh web`, open the model picker, and pick a model from
 the **dsh-opencode-free** group.
 
+### Updating
+
+Pick the source you installed from; each updates in place:
+
+```sh
+# release tarball (also what re-running the install URL does)
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
+
+# git install: follow master
+dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free
+
+# npm install
+dsh plugin --profile web add @dsh-opencode-free/dsh-plugin@latest
+```
+
+Then restart DSH. To confirm the new version landed, compare the profile's
+`node_modules/<pkg>/package.json` with the release you expected, and check the
+health snapshot at `~/.dsh-opencode-free/adapter-status.json`.
+
+If an update ever leaves the plugin installed but not loaded, it is the
+`ERR_PNPM_IGNORED_BUILDS` trap described above: remove and re-add, so the
+package counts as new and DSH registers it as a bundle.
+
 Requires DSH (DeepSeek Harness) 0.1.7 or newer with a web profile (the IP 池
 settings page rides the 0.1.7 Plugins page contract); Node.js ≥ 20 (already
 present if DSH runs); outbound HTTPS to `opencode.ai` and `models.dev`.
 
 ## Configuration
 
-Defaults work out of the box. Override via the profile's `cordis.patch.yml`:
+Defaults work out of the box. Override via the profile's `cordis.patch.yml`.
+The `name` must be the package you installed as: `dsh-opencode-free` for a git
+install, `@dsh-opencode-free/dsh-plugin` for the tarball or npm.
 
 ```yaml
 - id: dsh-opencode-free
-  name: '@dsh-opencode-free/dsh-plugin'
+  name: dsh-opencode-free   # or '@dsh-opencode-free/dsh-plugin'
   config:
     mode: adapter        # adapter (default) | sidecar
     providerId: dsh-opencode-free

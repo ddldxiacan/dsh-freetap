@@ -1,10 +1,13 @@
 # dsh-opencode-free DSH plugin — bundle patch: insert the plugin row (deployment-global).
 #
-# The plugin itself is distributed as the npm package @dsh-opencode-free/dsh-plugin
-# (declared in dependencies); this patch only inserts its loader row.
-# Defaults need no edits: the adapter registers into dsh-llm with no key and
-# no extra process. Override any option via the config object (src/config.ts).
+# `name` must be the package this repository installs as. The root package.json
+# is that package: a `github:ddldxiacan/dsh-opencode-free` install produces the
+# dependency `dsh-opencode-free`, and prebuilt output ships in
+# packages/plugin/lib, so no build step runs on install.
+#
+# Defaults need no edits: the adapter registers into dsh-llm with no key and no
+# extra process. Override any option via the config object (src/config.ts).
 - insert:
     - id: dsh-opencode-free
-      name: '@dsh-opencode-free/dsh-plugin'
+      name: 'dsh-opencode-free'
       config: {}

@@ -101,10 +101,20 @@ dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/rel
 **在 Web 界面里安装**：**设置 → 插件 → 安装**，粘贴同一个 tarball 链接。Web 页会写入
 同类的批准，并有自己的 bundle 选择流程；上面那套 CLI 步骤是此处经过实测的路径。
 
-⚠️ **不要用 `github:ddldxiacan/dsh-opencode-free` 安装。** 仓库根只是个私有包装，
-唯一依赖是 `@dsh-opencode-free/dsh-plugin`；git 安装会拿这个范围去 registry 解析，
-而只以 Release tarball 形式发布的包并不在 registry 里。
-上面那个 Release tarball 才是可用的路径（等发了 npm 包再用下面这条）。
+**直接从 GitHub 安装**（不经过 registry）：
+
+```sh
+dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free
+```
+
+这条路径之所以可用，是因为仓库根本身就是那个可安装的插件：它带着 `dsh` 清单，
+而构建产物已提交在 `packages/plugin/lib/` 下。git 安装无法执行构建——pnpm 会拦截
+git 依赖的 prepare 脚本——所以把构建产物一并提交，才让这条路径成立。
+需要稳定版本时建议锁定 tag：
+
+```sh
+dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free#v0.4.0
+```
 
 **从 npm 安装**（已发布版本）：
 
@@ -114,16 +124,41 @@ dsh plugin --profile web add @dsh-opencode-free/dsh-plugin
 
 **验证**：重启 `dsh web`，打开模型选择器，在 **dsh-opencode-free** 分组里选模型即可。
 
+### 更新
+
+按你当初安装的来源选一条，都是就地更新：
+
+```sh
+# Release tarball（重跑安装 URL 也是同样效果）
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
+
+# git 安装：跟随 master
+dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free
+
+# npm 安装
+dsh plugin --profile web add @dsh-opencode-free/dsh-plugin@latest
+```
+
+然后重启 DSH。确认新版本是否生效：比对 profile 里
+`node_modules/<包名>/package.json` 的版本，并查看健康快照
+`~/.dsh-opencode-free/adapter-status.json`。
+
+如果某次更新后插件装在 `node_modules` 里却始终不加载，那就是上文
+`ERR_PNPM_IGNORED_BUILDS` 那个坑：先 `remove` 再 `add`，让它重新算作新依赖，
+DSH 才会把它注册为 bundle。
+
 需要 DSH（DeepSeek Harness）0.1.7 及以上、带 web profile（IP 池设置页依赖 0.1.7
 的插件页契约）；Node.js ≥ 20（DSH 能跑就满足）；出站 HTTPS 需可达 `opencode.ai` 与 `models.dev`。
 
 ## 配置
 
-默认配置开箱即用。需要覆盖时，编辑 profile 的 `cordis.patch.yml`：
+默认配置开箱即用。需要覆盖时，编辑 profile 的 `cordis.patch.yml`。
+其中 `name` 必须是你实际安装的那个包名：git 安装用 `dsh-opencode-free`，
+tarball 或 npm 安装用 `@dsh-opencode-free/dsh-plugin`。
 
 ```yaml
 - id: dsh-opencode-free
-  name: '@dsh-opencode-free/dsh-plugin'
+  name: dsh-opencode-free   # 或 '@dsh-opencode-free/dsh-plugin'
   config:
     mode: adapter        # adapter（默认）| sidecar
     providerId: dsh-opencode-free

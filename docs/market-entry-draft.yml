@@ -20,10 +20,12 @@
 #
 # tarball: version-free asset name on purpose — `latest/download/` resolves
 # `latest` at request time but takes the filename literally, so a versioned asset
-# name works on submission day and 404s on the next release. It is also the
-# smoother install path, because this repo does not commit packages/plugin/lib/,
-# so a source install would hit pnpm's build-approval step
-# (ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED).
+# name works on submission day and 404s on the next release.
+#
+# The repository root is also directly installable (github:ddldxiacan/dsh-opencode-free)
+# because it carries the dsh manifest and the built output is committed under
+# packages/plugin/lib/; a git install cannot run a build, since pnpm blocks
+# prepare scripts for git dependencies (ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED).
 #
 # The description stays a claim the registry checks against the code — no
 # superlatives, no numbers that are not true of the tree.

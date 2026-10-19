@@ -1,13 +1,67 @@
 {
   "name": "dsh-opencode-free",
+  "version": "0.4.0",
   "private": true,
   "description": "Free OpenCode Zen models for DeepSeek Harness (DSH): native dsh-llm adapter plugin, no API key.",
+  "type": "module",
+  "main": "./packages/plugin/lib/index.js",
+  "exports": {
+    ".": "./packages/plugin/lib/index.js",
+    "./client": "./packages/plugin/lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "packages/plugin/lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ddldxiacan/dsh-opencode-free.git"
+  },
+  "homepage": "https://github.com/ddldxiacan/dsh-opencode-free#readme",
+  "bugs": "https://github.com/ddldxiacan/dsh-opencode-free/issues",
+  "author": "ddldxiacan (https://github.com/ddldxiacan)",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "opencode",
+    "opencode-zen",
+    "cordis",
+    "cordis-plugin",
+    "llm-adapter",
+    "llm-provider",
+    "free-models",
+    "free-llm"
+  ],
+  "license": "MIT",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-plugin-manager"
+      ],
+      "platform": "web",
+      "external": [
+        "@deepseek-ai/dsh-client-ui-primitives"
+      ]
     }
   },
   "dependencies": {
-    "@dsh-opencode-free/dsh-plugin": "^0.4.0"
+    "@deepseek-ai/schemastery": "^3.18.4",
+    "@earendil-works/pi-ai": "^0.82.1",
+    "undici": "^8.10.1",
+    "yaml": "^2.9.0"
   }
 }
