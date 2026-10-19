@@ -96,7 +96,13 @@ const config: UserConfig = {
         minify: true,
       })
       const classMap: Record<string, string> = {}
-      for (const [local, exp] of Object.entries(cssExports ?? {})) classMap[local] = exp.name
+      // lightningcss returns cssExports in an unspecified order, so emitting it
+      // verbatim makes the committed bundle differ on every rebuild for no
+      // semantic reason. Sort by key: the build must be reproducible, because CI
+      // fails when the committed output drifts from src/.
+      for (const [local, exp] of Object.entries(cssExports ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+        classMap[local] = exp.name
+      }
       return [
         `const css = ${JSON.stringify(code.toString())};`,
         `const tagId = ${JSON.stringify(`${ID}/${basename(fileId)}`)};`,
