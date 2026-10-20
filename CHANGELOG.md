@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.3
+
+### Fixed
+
+- **A vision-capable model could not see images until models.dev answered.**
+  `inputModalities` is not a cosmetic label: dsh-llm reads it at the adapter
+  boundary and, when the list lacks `image`, replaces every image block with an
+  `[image omitted]` TEXT placeholder before the adapter is called
+  (`projectImagesForTextModel`). The adapter's own fallback for "metadata
+  cannot speak yet" only covered the `mimo-v2.6` family, so on a cold boot — or
+  a slow/throttled models.dev, or a first install with no metadata cache —
+  `deepseek-v4.1-flash-free` was advertised as text-only and the picture never
+  reached the model. Live-verified end to end with a real screenshot: warm
+  metadata described it correctly, a cold catalog answered "I can't see the
+  image because images aren't supported". The fallback now covers every family
+  whose image input was verified on the live lane (2026-10-20):
+  `deepseek-v4.1-flash`, `mimo-v2.6`, `nemotron-3.5-super-vl`,
+  `longcat-2.5-preview`, `glm-5.3-flash`. Genuinely text-only free models
+  (`big-pickle`, `beam-free`, `nemotron-3.5-lightning-free`) stay text-only, and
+  a declared `text`-only verdict from models.dev still wins, so the gate keeps
+  refusing image input where the lane really cannot take it.
+
 ## 0.4.2
 
 ### Fixed

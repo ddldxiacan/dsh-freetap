@@ -386,16 +386,35 @@ function terminalErrorEvent(errorMessage, model) {
 * with `Model "<id>" does not support image input.` A declared text-only model
 * stays refused, so the gate still protects the lane in both directions.
 *
-* The built-in pattern remains the fallback for the ids whose image input was
-* live-verified end-to-end on 2026-09-28 (the mimo-v2.6 family), so metadata
-* being pending, absent or silent never changes what those models can do.
-* Models that end up text-only make DSH's attachment gates and pi-ai's image
-* downgrade refuse image parts instead of forwarding them to a model that
-* cannot see them.
+* THE FALLBACK USED TO BE ONE FAMILY, AND THAT SILENTLY BROKE VISION.
+* `inputModalities` is not just a label: dsh-llm reads it at the adapter
+* boundary and, when the list lacks `image`, replaces every image block with a
+* "[image omitted]" TEXT placeholder before the adapter ever sees it
+* (index.js `projectImagesForTextModel`). So while models.dev is still pending
+* — a cold boot, a slow feed, a first install with no metadata cache — a
+* vision-capable model was advertised text-only and the picture never reached
+* it. Live-verified end to end: with metadata warm, `deepseek-v4.1-flash-free`
+* describes an attached screenshot correctly; on a cold catalog the identical
+* request answers "I can't see the image because images aren't supported".
+*
+* The fallback therefore covers every family whose image input was verified on
+* the live lane (2026-10-20): deepseek-v4.1-flash / -free, mimo-v2.6,
+* nemotron-3.5-super-vl, longcat-2.5-preview and glm-5.3-flash. Models that
+* really are text-only (big-pickle, beam-free, nemotron-3.5-lightning) stay
+* text-only, and a declared `text`-only verdict from models.dev still wins, so
+* the gate keeps protecting the lane in both directions.
 */
+const VERIFIED_VISION_PATTERNS = [
+	/^mimo-v2\.6/i,
+	/^deepseek-v4\.1-flash/i,
+	/^nemotron-3\.5-super-vl/i,
+	/^longcat-2\.5-preview/i,
+	/^glm-5\.3-flash/i
+];
 function isVisionModel(id, declaredModalities) {
 	if (Array.isArray(declaredModalities) && declaredModalities.length > 0) return declaredModalities.includes("image");
-	return /^mimo-v2\.6/i.test(String(id ?? ""));
+	const model = String(id ?? "");
+	return VERIFIED_VISION_PATTERNS.some((pattern) => pattern.test(model));
 }
 function toPiModel(id, reasoning, limits, declaredModalities) {
 	return {
