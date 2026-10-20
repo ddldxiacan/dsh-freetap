@@ -41,16 +41,53 @@ async function putObject(home: string, sha: string, bytes: Buffer): Promise<void
   await writeFile(join(dir, sha), bytes)
 }
 
-test('system messages become leading user text', async () => {
+test('leading system messages fill the system prompt slot, not the user turns', async () => {
+  // DSH's agent loop delivers the system prompt as the leading run of
+  // `role: 'system'` messages (`buildRequest` never sets `options.system`).
+  // Turning those into user turns sent the entire prompt as user input — and
+  // left systemPrompt unset, so pi-ai emitted no system message at all.
+  const context = await toPiContext(
+    options({
+      messages: [
+        { role: 'system', content: [{ type: 'text', text: 'You are DSH.' }] },
+        { role: 'user', content: [{ type: 'text', text: 'hi' }] },
+      ],
+    }),
+  )
+  assert.equal(context.systemPrompt, 'You are DSH.')
+  assert.deepEqual(context.messages, [{ role: 'user', content: 'hi', timestamp: 0 }])
+})
+
+test('request-level system text and leading system messages are joined once, not duplicated', async () => {
+  // The old code emitted `options.system` in the system slot AND re-emitted the
+  // identical system message as a user turn, so the model saw the prompt twice.
   const context = await toPiContext(
     options({
       system: 'be helpful',
-      messages: [{ role: 'system', content: [{ type: 'text', text: 'be helpful' }] }],
+      messages: [
+        { role: 'system', content: [{ type: 'text', text: 'be helpful' }] },
+        { role: 'user', content: [{ type: 'text', text: 'hi' }] },
+      ],
     }),
   )
   assert.equal(context.systemPrompt, 'be helpful')
-  assert.equal(context.messages.length, 1)
-  assert.deepEqual(context.messages[0], { role: 'user', content: 'be helpful', timestamp: 0 })
+  assert.deepEqual(context.messages, [{ role: 'user', content: 'hi', timestamp: 0 }])
+})
+
+test('a system message after the leading run stays in the conversation as user text', async () => {
+  // pi-ai takes exactly one prompt, so a mid-conversation policy update can only
+  // ride the message list — but its content must not be dropped.
+  const context = await toPiContext(
+    options({
+      messages: [
+        { role: 'user', content: [{ type: 'text', text: 'hi' }] },
+        { role: 'system', content: [{ type: 'text', text: 'new rule' }] },
+      ],
+    }),
+  )
+  assert.equal(context.systemPrompt, undefined)
+  assert.equal(context.messages.length, 2)
+  assert.deepEqual(context.messages[1], { role: 'user', content: 'new rule', timestamp: 0 })
 })
 
 test('tool results become toolResult messages with the name from the prior toolCall', async () => {

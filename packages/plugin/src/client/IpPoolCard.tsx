@@ -382,10 +382,13 @@ function ModelPicker(props: {
   hint: string
   models: Array<{ id: string; verified: boolean }>
   loading: boolean
+  /** Why the option fetch failed, if it did; shown with a retry button. */
+  error?: string | null
+  onRetry?: () => void
   t: IpPoolCardProps['t']
   onChange: (next: string[]) => void
 }): ReactNode {
-  const { value, hint, models, loading, t, onChange } = props
+  const { value, hint, models, loading, error, onRetry, t, onChange } = props
   const toggle = (id: string): void => {
     onChange(value.includes(id) ? value.filter((entry) => entry !== id) : [...value, id])
   }
@@ -428,6 +431,14 @@ function ModelPicker(props: {
           ))}
         </select>
       </div>
+      {error ? (
+        <span className={styles.fieldHint} data-testid="probe-models-error">
+          {error}{' '}
+          {onRetry ? (
+            <button type="button" className={styles.rowAdd} onClick={onRetry}>{t('retry')}</button>
+          ) : null}
+        </span>
+      ) : null}
       {value.length === 0 && (
         <span className={styles.fieldHint}>{t('probeModelsDefault')}</span>
       )}
@@ -575,7 +586,10 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
   const [statusError, setStatusError] = useState<string | null>(null)
   const [probeModelRows, setProbeModelRows] = useState<Array<{ id: string; verified: boolean }>>([])
   const [probeModelsLoading, setProbeModelsLoading] = useState(false)
-  const [actionBusy, setActionBusy] = useState(false)
+  // Which bridge action is in flight. A single boolean made the subscription
+  // button render "加载中…" for a refill/probe round it was not running (the
+  // refill POST blocks until the whole round finishes).
+  const [busyScope, setBusyScope] = useState<BridgeAction['scope'] | null>(null)
   const hydratedRef = useRef(false)
   const formRef = useRef(form)
   formRef.current = form
@@ -595,27 +609,47 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
 
   // Fetch the probe-model options from the bridge once the body shows
   // (static S3 list first; live catalog rows merge in as they warm up).
+  /** /prober.completed as of the last batch request (round-relative progress). */
+  const [probeBase, setProbeBase] = useState(0)
+  const [probeModelsError, setProbeModelsError] = useState<string | null>(null)
+  const [probeModelsReload, setProbeModelsReload] = useState(0)
   useEffect(() => {
     let cancelled = false
     setProbeModelsLoading(true)
+    setProbeModelsError(null)
     fetch(`${BRIDGE_PREFIX}/models`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
       .then((response) => response.json() as Promise<{ ok: boolean; value?: { models: Array<{ id: string; verified: boolean }> } }>)
       .then((body) => {
-        if (!cancelled && body.ok && body.value) setProbeModelRows(body.value.models)
+        if (cancelled) return
+        if (body.ok && body.value) setProbeModelRows(body.value.models)
+        // A failed body used to fall through silently. The select then renders
+        // its "—" placeholder and stays `disabled` (it disables itself when the
+        // option list is empty) with no message and no retry, so one failed
+        // fetch left the user unable to pick a probe model for the whole page.
+        else setProbeModelsError(t('refreshError'))
       })
-      .catch(() => {})
+      .catch(() => { if (!cancelled) setProbeModelsError(t('refreshError')) })
       .finally(() => { if (!cancelled) setProbeModelsLoading(false) })
     return () => { cancelled = true }
-  }, [])
+  }, [probeModelsReload, t])
 
   // Poll the bridge /status: 1s while probing or refilling, 3s otherwise (docs §5.3).
   const probing = status !== null && status.prober.queued + status.prober.inFlight > 0
   const refilling = status?.refill?.progress.running === true
   const refreshingSubscriptions = status?.subscription?.running === true
+  // Poll sequencing: the interval does not wait for the previous request, so
+  // two polls can overlap (host busy in an admission round, a resumed tab) and
+  // resolve out of order. Without this guard a stale response overwrote a
+  // newer one: live refill progress jumped backwards, a finished round flashed
+  // back to "补充中…", and an old failure could re-set statusError right after
+  // a successful poll.
+  const statusSeqRef = useRef(0)
   const refreshStatus = useCallback(async (): Promise<void> => {
+    const seq = ++statusSeqRef.current
     try {
       const response = await fetch(`${BRIDGE_PREFIX}/status`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
       const body = await response.json() as { ok: boolean; value?: PoolStatusView }
+      if (seq !== statusSeqRef.current) return
       if (body.ok && body.value) {
         setStatus(body.value)
         setStatusError(null)
@@ -623,6 +657,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
         setStatusError(t('refreshError'))
       }
     } catch {
+      if (seq !== statusSeqRef.current) return
       setStatusError(t('refreshError'))
     }
   }, [t])
@@ -700,6 +735,19 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
     setError(null)
   }
 
+  /**
+   * Any edit clears the previous save outcome. The shared chrome derives
+   * "save failed" from `error !== null` and its own contract says the flag is
+   * "cleared by the next edit or save" — this card only ever cleared it in
+   * save/discard, so one failed save kept a 保存失败 banner (and `failed`)
+   * showing even after the user corrected the offending value.
+   */
+  const markEdited = (patch: Partial<FormState>): void => {
+    setSaved(false)
+    setError(null)
+    setForm({ ...form, ...patch })
+  }
+
   const shell: SettingsFormShell = {
     available,
     writable,
@@ -711,21 +759,21 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
 
   /** One bridge action (/probe): probe lanes, or the subscription refresh. */
   const bridgeAction = async (body: BridgeAction): Promise<void> => {
-    setActionBusy(true)
+    setBusyScope(body.scope)
     try {
       await postBridgeAction(body)
       await refreshStatus()
     } catch (err) {
       setStatusError(err instanceof Error ? err.message : t('refreshError'))
     } finally {
-      setActionBusy(false)
+      setBusyScope(null)
     }
   }
 
   /** Pin an exit from the table: writes pinnedExitId and saves immediately. */
   const pinExit = async (exitId: string): Promise<void> => {
     if (!writable || settings === undefined || snapshot === undefined) return
-    setActionBusy(true)
+    setBusyScope('exit')
     try {
       const accepted = await settings.mutate([{ op: 'set', path: [IP_POOL_FIELD, 'pinnedExitId'], value: exitId }], snapshot.revision)
       if (!accepted) throw new Error(t('saveError'))
@@ -733,12 +781,19 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
     } catch (err) {
       setError(err instanceof Error ? err.message : t('saveError'))
     } finally {
-      setActionBusy(false)
+      setBusyScope(null)
     }
   }
 
-  const probeDone = status !== null ? status.prober.completed : 0
-  const probeTotal = status !== null ? status.prober.enqueued : 0
+  const actionBusy = busyScope !== null
+
+  // Round-relative probe progress. Prober's counters are cumulative for the
+  // process life and are never reset, so reading them directly showed "11/14"
+  // (done ≈ or > total) on every round after the first. `probeBase` snapshots
+  // the completed count when a batch is requested, so the label describes the
+  // round the user is actually watching.
+  const probeDone = status !== null ? Math.max(0, status.prober.completed - probeBase) : 0
+  const probeTotal = status !== null ? Math.max(0, status.prober.enqueued - probeBase) : 0
 
   return (
     <SettingsForm labels={formLabels(t)} state={shell} onSave={() => { void handleSave() }} onDiscard={handleDiscard}>
@@ -750,7 +805,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
           type="checkbox"
           checked={form.enabled}
           data-testid="field-enabled"
-          onChange={(event) => { setSaved(false); setForm({ ...form, enabled: event.target.checked }) }}
+          onChange={(event) => { markEdited({ enabled: event.target.checked }) }}
         />
         <span>
           <span className={styles.fieldLabel}>{t('enabled')}</span>
@@ -765,7 +820,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
             type="checkbox"
             checked={form.freeEnabled}
             data-testid="field-freeEnabled"
-            onChange={(event) => { setSaved(false); setForm({ ...form, freeEnabled: event.target.checked }) }}
+            onChange={(event) => { markEdited({ freeEnabled: event.target.checked }) }}
           />
           <span>
             <span className={styles.fieldLabel}>{t('freeEnabled')}</span>
@@ -782,14 +837,14 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
             min={1}
             max={100}
             step={1}
-            onChange={(value) => { setSaved(false); setForm({ ...form, targetSize: value }) }}
+            onChange={(value) => { markEdited({ targetSize: value }) }}
           />
           <TextField
             label={t('freeBlockedCountries')}
             hint={t('freeBlockedCountriesHint')}
             value={form.blockedCountries}
             testId="field-blockedCountries"
-            onChange={(value) => { setSaved(false); setForm({ ...form, blockedCountries: value }) }}
+            onChange={(value) => { markEdited({ blockedCountries: value }) }}
           />
         </div>
         <button
@@ -823,7 +878,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
           values={form.manual}
           placeholder={t('manualPlaceholder')}
           testId="field-manual"
-          onChange={(next) => { setSaved(false); setForm({ ...form, manual: next }) }}
+          onChange={(next) => { markEdited({ manual: next }) }}
         />
       </div>
 
@@ -836,7 +891,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
           placeholder={t('subscriptionPlaceholder')}
           testId="field-subscriptions"
           redacted
-          onChange={(next) => { setSaved(false); setForm({ ...form, subscriptionUrls: next }) }}
+          onChange={(next) => { markEdited({ subscriptionUrls: next }) }}
         />
         <div className={styles.fieldRow}>
           <TextField
@@ -847,7 +902,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
             type="number"
             min={60_000}
             step={1}
-            onChange={(value) => { setSaved(false); setForm({ ...form, refreshMs: value }) }}
+            onChange={(value) => { markEdited({ refreshMs: value }) }}
           />
           <div className={styles.field}>
             <span className={styles.fieldLabel}>{' '}</span>
@@ -858,7 +913,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
               disabled={actionBusy || refreshingSubscriptions || !form.enabled || served.subscription.urls.length === 0}
               onClick={() => { void bridgeAction({ scope: 'subscriptions' }) }}
             >
-              {t(refreshingSubscriptions || actionBusy ? 'statusLoading' : 'subscriptionRefreshNow')}
+              {t(refreshingSubscriptions || busyScope === 'subscriptions' ? 'statusLoading' : 'subscriptionRefreshNow')}
             </button>
           </div>
         </div>
@@ -868,7 +923,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
             hint={t('subscriptionUserAgentHint')}
             value={form.userAgent}
             testId="field-subscriptionUserAgent"
-            onChange={(value) => { setSaved(false); setForm({ ...form, userAgent: value }) }}
+            onChange={(value) => { markEdited({ userAgent: value }) }}
           />
         </div>
         {status?.subscription !== null && status?.subscription !== undefined && (
@@ -882,7 +937,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
           hint={t('singboxPathHint')}
           value={form.singboxPath}
           testId="field-singboxPath"
-          onChange={(value) => { setSaved(false); setForm({ ...form, singboxPath: value }) }}
+          onChange={(value) => { markEdited({ singboxPath: value }) }}
         />
       </div>
 
@@ -894,7 +949,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
           value={form.pinnedExitId}
           placeholder={t('manualPlaceholder')}
           testId="field-pinnedExitId"
-          onChange={(value) => { setSaved(false); setForm({ ...form, pinnedExitId: value }) }}
+          onChange={(value) => { markEdited({ pinnedExitId: value }) }}
         />
         <span className={styles.fieldLabel}>{t('pinnedStrict')}</span>
         <span className={styles.fieldHint}>{t('pinnedStrictHint')}</span>
@@ -903,7 +958,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
             type="radio"
             name="ip-pool-strict"
             checked={!form.pinnedStrict}
-            onChange={() => { setSaved(false); setForm({ ...form, pinnedStrict: false }) }}
+            onChange={() => { markEdited({ pinnedStrict: false }) }}
           />
           {t('pinnedStrictOff')}
         </label>
@@ -913,7 +968,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
             name="ip-pool-strict"
             checked={form.pinnedStrict}
             data-testid="field-pinnedStrict"
-            onChange={() => { setSaved(false); setForm({ ...form, pinnedStrict: true }) }}
+            onChange={() => { markEdited({ pinnedStrict: true }) }}
           />
           {t('pinnedStrictOn')}
         </label>
@@ -923,7 +978,7 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
             className={styles.ghostButton}
             data-testid="unpin"
             disabled={saving}
-            onClick={() => { setSaved(false); setForm({ ...form, pinnedExitId: '' }) }}
+            onClick={() => { markEdited({ pinnedExitId: '' }) }}
           >
             {t('pinnedUnset')}
           </button>
@@ -937,8 +992,10 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
           hint={t('probeModelsHint')}
           models={probeModelRows}
           loading={probeModelsLoading}
+          error={probeModelsError}
+          onRetry={() => setProbeModelsReload((n) => n + 1)}
           t={t}
-          onChange={(next) => { setSaved(false); setForm({ ...form, probeModels: next }) }}
+          onChange={(next) => { markEdited({ probeModels: next }) }}
         />
         <TextField
           label={t('probeConcurrency')}
@@ -949,14 +1006,14 @@ function CardBody(props: { settings: ConfigPageForm | undefined; t: IpPoolCardPr
           min={1}
           max={8}
           step={1}
-          onChange={(value) => { setSaved(false); setForm({ ...form, maxConcurrentProbes: value }) }}
+          onChange={(value) => { markEdited({ maxConcurrentProbes: value }) }}
         />
         <button
           type="button"
           className={styles.ghostButton}
           data-testid="probe-all"
           disabled={actionBusy || !form.enabled}
-          onClick={() => { void bridgeAction({ scope: 'all' }) }}
+          onClick={() => { setProbeBase(status !== null ? status.prober.completed : 0); void bridgeAction({ scope: 'all' }) }}
         >
           {probing ? t('probeRunning').replace('{done}', String(probeDone)).replace('{total}', String(probeTotal)) : t('probeAll')}
         </button>

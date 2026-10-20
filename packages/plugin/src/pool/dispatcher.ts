@@ -209,7 +209,15 @@ export class PoolRoutingDispatcher implements RoutingDispatcherSurface {
     if (!agent) {
       return this.#direct.dispatch(options, handler)
     }
-    return agent.dispatch(options, this.#observe(exitId, model, session, handler))
+    const observed = this.#observe(exitId, model, session, handler) as Dispatcher.DispatchHandler & { __disarm?: () => void }
+    const dispatched = agent.dispatch(options, observed)
+    if (!dispatched) {
+      // The agent refused the dispatch, so no handler callback will ever
+      // arrive: cancel the silence sentinel, or it would misread "never sent"
+      // as "exit went silent" (dead strike + session reroute).
+      observed.__disarm?.()
+    }
+    return dispatched
   }
 
   /**
@@ -299,7 +307,7 @@ export class PoolRoutingDispatcher implements RoutingDispatcherSurface {
     const disarm = (): void => {
       clearTimeout(sentinel)
     }
-    return {
+    const observed: Dispatcher.DispatchHandler & { __disarm?: () => void } = {
       onRequestStart: (controller, context) => {
         liveController = controller
         // window (a) ends; window (b) begins: headers must still arrive,
@@ -341,6 +349,14 @@ export class PoolRoutingDispatcher implements RoutingDispatcherSurface {
       onBodySent: (chunk) => forward('onBodySent', [chunk]),
       onRequestSent: () => forward('onRequestSent', []),
     }
+    // The dispatch call itself can be REFUSED (a closed/destroyed agent, a
+    // rejected upgrade): undici then never invokes a single callback, so the
+    // armed sentinel would fire ~2s later against a request that was never
+    // sent — recording a transport strike (a free exit is evicted after two)
+    // and breaking a sticky session that was healthy. dispatch() therefore
+    // disarms explicitly when it returns false.
+    observed.__disarm = disarm
+    return observed
   }
 
   close(): Promise<void> {

@@ -391,6 +391,15 @@ var ModelCatalog = class {
 	#prices = /* @__PURE__ */ new Map();
 	#pricesReady = false;
 	#lastError = "";
+	/**
+	* Per-source errors, folded into `#lastError` once a round settles. They are
+	* kept apart because both sources run concurrently: with one shared field,
+	* a slow-but-healthy Zen refresh landing after a failed models.dev fetch
+	* cleared the error (and a models.dev failure landing after a good Zen
+	* refresh reported a broken catalog the picker did not actually have).
+	*/
+	#zenError = "";
+	#metadataError = "";
 	#zenFailed = false;
 	#refreshSeconds;
 	#cachePath;
@@ -452,6 +461,7 @@ var ModelCatalog = class {
 	}
 	async #refreshRound() {
 		await Promise.allSettled([this.refreshZen(), this.refreshMetadata()]);
+		this.#lastError = [this.#zenError, this.#metadataError].filter((message) => message !== "").join("; ");
 		if (this.#onRefresh) try {
 			this.#onRefresh(this.snapshot(), this.#lastError);
 		} catch {}
@@ -462,10 +472,10 @@ var ModelCatalog = class {
 			this.#zen = new Set(ids);
 			this.#zenFailed = false;
 			this.#updatedAt = this.#now();
-			this.#lastError = "";
+			this.#zenError = "";
 		} catch (err) {
 			this.#zenFailed = true;
-			this.#lastError = err instanceof Error ? err.message : String(err);
+			this.#zenError = err instanceof Error ? err.message : String(err);
 		}
 	}
 	async refreshMetadata() {
@@ -477,12 +487,19 @@ var ModelCatalog = class {
 			}
 		}
 		try {
-			const response = await withTimeout(this.#fetch(this.#metadataUrl, { headers: { accept: "application/json" } }));
-			if (!response.ok) throw new Error(`models.dev returned HTTP ${response.status}`);
-			const prices = decodeModelsDev(await response.json());
+			const { value: raw } = await withDeadline(FETCH_TIMEOUT_MS, async (signal) => {
+				const response = await this.#fetch(this.#metadataUrl, {
+					headers: { accept: "application/json" },
+					signal
+				});
+				if (!response.ok) throw new Error(`models.dev returned HTTP ${response.status}`);
+				return await response.text();
+			});
+			const prices = decodeModelsDev(JSON.parse(raw));
 			if (prices.size === 0) throw new Error("models.dev contains no OpenCode model metadata");
 			this.#prices = prices;
 			this.#pricesReady = true;
+			this.#metadataError = "";
 			if (this.#cachePath) await saveMetadataCache(this.#cachePath, prices, this.#now());
 		} catch (err) {
 			if (this.#cachePath && !this.#pricesReady) {
@@ -490,10 +507,11 @@ var ModelCatalog = class {
 				if (cached && cached.size > 0) {
 					this.#prices = cached;
 					this.#pricesReady = true;
+					this.#metadataError = "";
 					return;
 				}
 			}
-			this.#lastError = err instanceof Error ? err.message : String(err);
+			this.#metadataError = err instanceof Error ? err.message : String(err);
 		}
 	}
 	/**
@@ -599,25 +617,45 @@ var ModelCatalog = class {
 		return this.#lastError;
 	}
 };
-async function withTimeout(promise, timeoutMs = FETCH_TIMEOUT_MS) {
+/**
+* Run `task` under one abortable deadline, aborting its signal when the clock
+* runs out. The old helper built an AbortController and then never used its
+* signal, so a peer that accepted the connection and went silent hung the
+* caller forever (live-reproduced: a stalling server kept the refresh round
+* past 40s with FETCH_TIMEOUT_MS = 30s), and a peer that sent headers then
+* stalled the body hung it just as well.
+*/
+async function withDeadline(timeoutMs, task) {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), timeoutMs);
 	try {
-		return await promise;
+		return { value: await task(controller.signal) };
+	} catch (err) {
+		if (controller.signal.aborted) {
+			const reason = err instanceof Error ? err.message : String(err);
+			throw new Error(`request timed out after ${timeoutMs}ms (${reason})`);
+		}
+		throw err;
 	} finally {
 		clearTimeout(timer);
 	}
 }
 /** S1: fetchModels (models.go:587-618) with the CLI disguise headers. */
 async function fetchZenModels(zenBaseUrl, fetchImpl, userAgent) {
-	const response = await withTimeout(fetchImpl(`${zenBaseUrl.replace(/\/+$/, "")}/v1/models`, { headers: {
-		authorization: "Bearer public",
-		"user-agent": userAgent,
-		"x-opencode-client": "cli",
-		accept: "application/json"
-	} }));
-	if (!response.ok) throw new Error(`models endpoint returned HTTP ${response.status}`);
-	const payload = await response.json();
+	const { value: raw } = await withDeadline(FETCH_TIMEOUT_MS, async (signal) => {
+		const response = await fetchImpl(`${zenBaseUrl.replace(/\/+$/, "")}/v1/models`, {
+			headers: {
+				authorization: "Bearer public",
+				"user-agent": userAgent,
+				"x-opencode-client": "cli",
+				accept: "application/json"
+			},
+			signal
+		});
+		if (!response.ok) throw new Error(`models endpoint returned HTTP ${response.status}`);
+		return await response.text();
+	});
+	const payload = JSON.parse(raw);
 	const models = [];
 	for (const item of payload.data ?? []) if (typeof item?.id === "string" && item.id.length > 0) models.push(item.id);
 	if (models.length === 0) throw new Error("models endpoint returned an empty list");

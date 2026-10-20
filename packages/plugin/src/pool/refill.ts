@@ -126,12 +126,22 @@ export class RefillScheduler {
     }
   }
 
-  /** One refill round; skipped while a previous round is still draining. */
-  async tick(): Promise<void> {
-    if (this.#running) return
+  /** True while a round is draining (a manual `tick()` would be dropped). */
+  get running(): boolean {
+    return this.#running
+  }
+
+  /** One refill round. Returns false when a round was already in flight and
+   *  the request was therefore SKIPPED — the caller must not report "refilled"
+   *  for a round it did not start (the settings card's 立即补充 button used to
+   *  do exactly that: a click landing during the periodic round answered
+   *  `{refilled: true}` with no progress and no admission). */
+  async tick(): Promise<boolean> {
+    if (this.#running) return false
     this.#running = true
     try {
       await this.#round()
+      return true
     } finally {
       this.#running = false
     }

@@ -138,7 +138,7 @@ function fakeRuntime(overrides: Record<string, unknown> = {}): unknown {
     },
     probeAll: async () => 2,
     probeExit: async () => 1,
-    refillNow: async () => {},
+    refillNow: async () => true,
     refreshSubscriptions: async () => {},
     reconfigure: async () => {},
     dispose: async () => {},

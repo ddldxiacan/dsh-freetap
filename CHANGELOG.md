@@ -1,5 +1,81 @@
 # Changelog
 
+## 0.4.2
+
+### Fixed
+
+- **The documented update command never updated anything.** Installing from
+  `releases/latest/download/dsh-opencode-free-dsh-plugin.tgz` and later
+  re-running that same URL kept the old version forever: pnpm pins the resolved
+  tarball URL *and its integrity hash* in `pnpm-lock.yaml`, so an unchanged URL
+  short-circuits as "Lockfile is up to date, resolution step is skipped". It is
+  not specific to DSH — `pnpm add --force`, `pnpm update [--latest]`,
+  `pnpm install --force` and deleting `node_modules` all still installed the
+  old build; only a different URL re-resolved. Releases now also publish a
+  **tag-scoped asset**
+  (`.../releases/download/v<version>/dsh-opencode-free-dsh-plugin-<version>.tgz`),
+  which is what the new Updating section tells you to install; the version-free
+  name still exists for first installs and one-time migration.
+- **The catalog refresh could hang forever on a silent peer.** `withTimeout()`
+  built an `AbortController` and then never passed its signal to `fetch`, so it
+  timed out nothing; a host that accepted the connection and stalled held the
+  refresh round open indefinitely (reproduced against a stalling local server:
+  the round was still pending at 40s with a 30s window). The 30s deadline now
+  goes through `signal` and covers the body read as well, so a peer that sends
+  headers and then stalls is bounded too.
+- **`lastError` reported whichever half of the refresh finished last.** Zen and
+  models.dev are fetched concurrently into one shared field, so a healthy Zen
+  refresh completing after a failed models.dev fetch cleared the error, and a
+  models.dev failure landing after a good Zen refresh reported a catalog
+  problem the picker did not have. Each source now records its own reason and
+  the round folds them once both settle.
+- **Manual proxies and the pin could not be changed from the settings page.**
+  `reconfigure()` hot-applied every knob except the exit table itself: the pool
+  was built once at start and never reconciled, so adding a manual proxy,
+  removing one, pinning a line, or clearing the pin all saved "successfully"
+  and changed nothing (verified: adding `2.2.2.2:9090` plus pinning it left the
+  pool at `['1.1.1.1:8080']` and `pinnedId` empty). A new `syncManualExits()`
+  runs on boot *and* on every save: it adds/drops `manual` rows, refreshes
+  their protocol and pinned flag without discarding measured health, and calls
+  `pin()`/`unpin()` to match `pinnedExitId` exactly. Free and subscription
+  rows are never touched.
+- **Mistyped manual proxies were admitted as healthy exits.**
+  `parseManualProxy`'s validator was unanchored: `/^\[[^\]]+\]|[^:]+:\d{1,5}$/`
+  splits on `|`, so the bracketed-IPv6 half required neither an end anchor nor
+  a port — `[abc]`, `[2001:db8::1]` and `http://[::1]junk` all parsed. Ports
+  above 65535 and port 0 passed on the other half. Each parsed row is seeded
+  into the pool already marked `ok` with latency 0, so a typo became a live
+  proxy target that outranked real exits. Now anchored in both branches with a
+  1–65535 port range.
+- **A dead manual/subscription exit was reported healthy and ranked first.**
+  A failed trusted-source smoke still returns `admitted: true` on purpose (the
+  user's line stays in the table), but the fallback also fabricated
+  `latencyMs: 0` — which grades `'S'` and sorts first in `pick()`'s ascending
+  latency comparison — and every caller then called `markOk()`. The verdict now
+  carries `degraded: true` and the callers record a dead strike instead; an
+  unmeasured exit sorts last instead of first.
+- **A refused dispatch was misread as exit silence.** When `agent.dispatch()`
+  returns `false` no handler callback ever fires, but the dispatcher's
+  silence sentinel stayed armed and struck the exit dead ~2s later (and
+  rerouted a healthy session). It is now disarmed on that path.
+- **Probe concurrency could ban the wrong model.** The per-probe model rode a
+  shared `admissionDeps.smokeModel` that every concurrent worker overwrote, so
+  the smoke request and the (exit, model) health/ban bookkeeping could name
+  different models. The model now travels as a per-call option.
+- **「立即补充」 could report a refill that never ran.** `RefillScheduler.tick()`
+  silently drops a request while a round is in flight, and the bridge answered
+  `{refilled: true}` regardless. It now returns whether a round actually
+  started and the bridge answers `refill-in-flight` otherwise.
+
+### Changed
+
+- `smoke-public-catalog.mjs` no longer pins a hardcoded model id from the
+  rotating upstream free roster (the retired `space-bunny-free` assertion made
+  the smoke red while nothing was broken); it asserts the structural properties
+  instead and reports retired bootstrap ids. `smoke-issues.mjs` now intercepts
+  the live catalog by path shape, so it no longer leaks real network calls after
+  the endpoint moved to `/inference/v1/models`.
+
 ## 0.4.0
 
 ### Changed

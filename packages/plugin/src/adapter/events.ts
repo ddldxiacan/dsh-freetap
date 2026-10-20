@@ -85,9 +85,24 @@ function classifyError(text: string): string {
 }
 
 function isContextOverflow(message: PiDoneMessage, contextWindow: number): boolean {
-  // pi-ai isContextOverflow equivalent: error-free finish whose input usage
-  // alone exceeds the resolved window.
-  return message.stopReason === 'stop' && message.usage.input > contextWindow
+  // Ported from pi-ai's own isContextOverflow (dist/utils/overflow.js:146-161).
+  // `usage.input` is the UNCACHED input only — pi-ai's parseChunkUsage computes
+  // `max(0, promptTokens - cacheRead - cacheWrite)` — so comparing it alone
+  // misses every cached conversation, i.e. every multi-turn one. A 300k-token
+  // history of which 290k is a cache read looks like a 10k prompt, the silent
+  // overflow was reported as a clean `stop`, and the host never compacted or
+  // retried: the user simply got a truncated answer.
+  if (contextWindow > 0) {
+    const inputTokens = message.usage.input + message.usage.cacheRead
+    // Case 2: provider truncated silently but still reported a normal stop.
+    if (message.stopReason === 'stop' && inputTokens > contextWindow) return true
+    // Case 3: length stop with no output and the prompt eating the window —
+    // the provider clamped the input and had no room left to generate.
+    if (message.stopReason === 'length' && message.usage.output === 0 && inputTokens >= contextWindow * 0.99) {
+      return true
+    }
+  }
+  return false
 }
 
 /** mapStopReason (dsh-llm-pi-ai index.js:1286-1330). */

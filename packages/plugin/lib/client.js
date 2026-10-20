@@ -406,7 +406,7 @@ function StringList(props) {
 * (docs §5.2 探活模型). Empty selection = the S3-first default (big-pickle).
 */
 function ModelPicker(props) {
-	const { value, hint, models, loading, t, onChange } = props;
+	const { value, hint, models, loading, error, onRetry, t, onChange } = props;
 	const toggle = (id) => {
 		onChange(value.includes(id) ? value.filter((entry) => entry !== id) : [...value, id]);
 	};
@@ -462,6 +462,20 @@ function ModelPicker(props) {
 					}, row.id))]
 				})
 			}),
+			error ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+				className: ip_pool_module_css_default.fieldHint,
+				"data-testid": "probe-models-error",
+				children: [
+					error,
+					" ",
+					onRetry ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+						type: "button",
+						className: ip_pool_module_css_default.rowAdd,
+						onClick: onRetry,
+						children: t("retry")
+					}) : null
+				]
+			}) : null,
 			value.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 				className: ip_pool_module_css_default.fieldHint,
 				children: t("probeModelsDefault")
@@ -641,7 +655,7 @@ function CardBody(props) {
 	const [statusError, setStatusError] = (0, react.useState)(null);
 	const [probeModelRows, setProbeModelRows] = (0, react.useState)([]);
 	const [probeModelsLoading, setProbeModelsLoading] = (0, react.useState)(false);
-	const [actionBusy, setActionBusy] = (0, react.useState)(false);
+	const [busyScope, setBusyScope] = (0, react.useState)(null);
 	const hydratedRef = (0, react.useRef)(false);
 	const formRef = (0, react.useRef)(form);
 	formRef.current = form;
@@ -654,37 +668,50 @@ function CardBody(props) {
 			setForm(formFromValue(servedRef.current));
 		}
 	}, [snapshot?.status, snapshot?.value]);
+	/** /prober.completed as of the last batch request (round-relative progress). */
+	const [probeBase, setProbeBase] = (0, react.useState)(0);
+	const [probeModelsError, setProbeModelsError] = (0, react.useState)(null);
+	const [probeModelsReload, setProbeModelsReload] = (0, react.useState)(0);
 	(0, react.useEffect)(() => {
 		let cancelled = false;
 		setProbeModelsLoading(true);
+		setProbeModelsError(null);
 		fetch(`${BRIDGE_PREFIX}/models`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
 			body: "{}"
 		}).then((response) => response.json()).then((body) => {
-			if (!cancelled && body.ok && body.value) setProbeModelRows(body.value.models);
-		}).catch(() => {}).finally(() => {
+			if (cancelled) return;
+			if (body.ok && body.value) setProbeModelRows(body.value.models);
+			else setProbeModelsError(t("refreshError"));
+		}).catch(() => {
+			if (!cancelled) setProbeModelsError(t("refreshError"));
+		}).finally(() => {
 			if (!cancelled) setProbeModelsLoading(false);
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, []);
+	}, [probeModelsReload, t]);
 	const probing = status !== null && status.prober.queued + status.prober.inFlight > 0;
 	const refilling = status?.refill?.progress.running === true;
 	const refreshingSubscriptions = status?.subscription?.running === true;
+	const statusSeqRef = (0, react.useRef)(0);
 	const refreshStatus = (0, react.useCallback)(async () => {
+		const seq = ++statusSeqRef.current;
 		try {
 			const body = await (await fetch(`${BRIDGE_PREFIX}/status`, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: "{}"
 			})).json();
+			if (seq !== statusSeqRef.current) return;
 			if (body.ok && body.value) {
 				setStatus(body.value);
 				setStatusError(null);
 			} else setStatusError(t("refreshError"));
 		} catch {
+			if (seq !== statusSeqRef.current) return;
 			setStatusError(t("refreshError"));
 		}
 	}, [t]);
@@ -754,6 +781,21 @@ function CardBody(props) {
 		setSaved(false);
 		setError(null);
 	};
+	/**
+	* Any edit clears the previous save outcome. The shared chrome derives
+	* "save failed" from `error !== null` and its own contract says the flag is
+	* "cleared by the next edit or save" — this card only ever cleared it in
+	* save/discard, so one failed save kept a 保存失败 banner (and `failed`)
+	* showing even after the user corrected the offending value.
+	*/
+	const markEdited = (patch) => {
+		setSaved(false);
+		setError(null);
+		setForm({
+			...form,
+			...patch
+		});
+	};
 	const shell = {
 		available,
 		writable,
@@ -764,20 +806,20 @@ function CardBody(props) {
 	};
 	/** One bridge action (/probe): probe lanes, or the subscription refresh. */
 	const bridgeAction = async (body) => {
-		setActionBusy(true);
+		setBusyScope(body.scope);
 		try {
 			await postBridgeAction(body);
 			await refreshStatus();
 		} catch (err) {
 			setStatusError(err instanceof Error ? err.message : t("refreshError"));
 		} finally {
-			setActionBusy(false);
+			setBusyScope(null);
 		}
 	};
 	/** Pin an exit from the table: writes pinnedExitId and saves immediately. */
 	const pinExit = async (exitId) => {
 		if (!writable || settings === void 0 || snapshot === void 0) return;
-		setActionBusy(true);
+		setBusyScope("exit");
 		try {
 			if (!await settings.mutate([{
 				op: "set",
@@ -791,11 +833,12 @@ function CardBody(props) {
 		} catch (err) {
 			setError(err instanceof Error ? err.message : t("saveError"));
 		} finally {
-			setActionBusy(false);
+			setBusyScope(null);
 		}
 	};
-	const probeDone = status !== null ? status.prober.completed : 0;
-	const probeTotal = status !== null ? status.prober.enqueued : 0;
+	const actionBusy = busyScope !== null;
+	const probeDone = status !== null ? Math.max(0, status.prober.completed - probeBase) : 0;
+	const probeTotal = status !== null ? Math.max(0, status.prober.enqueued - probeBase) : 0;
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(__deepseek_ai_dsh_client_ui_primitives.SettingsForm, {
 		labels: formLabels(t),
 		state: shell,
@@ -818,11 +861,7 @@ function CardBody(props) {
 						checked: form.enabled,
 						"data-testid": "field-enabled",
 						onChange: (event) => {
-							setSaved(false);
-							setForm({
-								...form,
-								enabled: event.target.checked
-							});
+							markEdited({ enabled: event.target.checked });
 						}
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: ip_pool_module_css_default.fieldLabel,
@@ -846,11 +885,7 @@ function CardBody(props) {
 								checked: form.freeEnabled,
 								"data-testid": "field-freeEnabled",
 								onChange: (event) => {
-									setSaved(false);
-									setForm({
-										...form,
-										freeEnabled: event.target.checked
-									});
+									markEdited({ freeEnabled: event.target.checked });
 								}
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								className: ip_pool_module_css_default.fieldLabel,
@@ -872,11 +907,7 @@ function CardBody(props) {
 								max: 100,
 								step: 1,
 								onChange: (value) => {
-									setSaved(false);
-									setForm({
-										...form,
-										targetSize: value
-									});
+									markEdited({ targetSize: value });
 								}
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(TextField, {
 								label: t("freeBlockedCountries"),
@@ -884,11 +915,7 @@ function CardBody(props) {
 								value: form.blockedCountries,
 								testId: "field-blockedCountries",
 								onChange: (value) => {
-									setSaved(false);
-									setForm({
-										...form,
-										blockedCountries: value
-									});
+									markEdited({ blockedCountries: value });
 								}
 							})]
 						}),
@@ -925,11 +952,7 @@ function CardBody(props) {
 						placeholder: t("manualPlaceholder"),
 						testId: "field-manual",
 						onChange: (next) => {
-							setSaved(false);
-							setForm({
-								...form,
-								manual: next
-							});
+							markEdited({ manual: next });
 						}
 					})]
 				}),
@@ -948,11 +971,7 @@ function CardBody(props) {
 							testId: "field-subscriptions",
 							redacted: true,
 							onChange: (next) => {
-								setSaved(false);
-								setForm({
-									...form,
-									subscriptionUrls: next
-								});
+								markEdited({ subscriptionUrls: next });
 							}
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -966,11 +985,7 @@ function CardBody(props) {
 								min: 6e4,
 								step: 1,
 								onChange: (value) => {
-									setSaved(false);
-									setForm({
-										...form,
-										refreshMs: value
-									});
+									markEdited({ refreshMs: value });
 								}
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: ip_pool_module_css_default.field,
@@ -985,7 +1000,7 @@ function CardBody(props) {
 									onClick: () => {
 										bridgeAction({ scope: "subscriptions" });
 									},
-									children: t(refreshingSubscriptions || actionBusy ? "statusLoading" : "subscriptionRefreshNow")
+									children: t(refreshingSubscriptions || busyScope === "subscriptions" ? "statusLoading" : "subscriptionRefreshNow")
 								})]
 							})]
 						}),
@@ -997,11 +1012,7 @@ function CardBody(props) {
 								value: form.userAgent,
 								testId: "field-subscriptionUserAgent",
 								onChange: (value) => {
-									setSaved(false);
-									setForm({
-										...form,
-										userAgent: value
-									});
+									markEdited({ userAgent: value });
 								}
 							})
 						}),
@@ -1023,11 +1034,7 @@ function CardBody(props) {
 							value: form.singboxPath,
 							testId: "field-singboxPath",
 							onChange: (value) => {
-								setSaved(false);
-								setForm({
-									...form,
-									singboxPath: value
-								});
+								markEdited({ singboxPath: value });
 							}
 						})
 					]
@@ -1046,11 +1053,7 @@ function CardBody(props) {
 							placeholder: t("manualPlaceholder"),
 							testId: "field-pinnedExitId",
 							onChange: (value) => {
-								setSaved(false);
-								setForm({
-									...form,
-									pinnedExitId: value
-								});
+								markEdited({ pinnedExitId: value });
 							}
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
@@ -1068,11 +1071,7 @@ function CardBody(props) {
 								name: "ip-pool-strict",
 								checked: !form.pinnedStrict,
 								onChange: () => {
-									setSaved(false);
-									setForm({
-										...form,
-										pinnedStrict: false
-									});
+									markEdited({ pinnedStrict: false });
 								}
 							}), t("pinnedStrictOff")]
 						}),
@@ -1084,11 +1083,7 @@ function CardBody(props) {
 								checked: form.pinnedStrict,
 								"data-testid": "field-pinnedStrict",
 								onChange: () => {
-									setSaved(false);
-									setForm({
-										...form,
-										pinnedStrict: true
-									});
+									markEdited({ pinnedStrict: true });
 								}
 							}), t("pinnedStrictOn")]
 						}),
@@ -1098,11 +1093,7 @@ function CardBody(props) {
 							"data-testid": "unpin",
 							disabled: saving,
 							onClick: () => {
-								setSaved(false);
-								setForm({
-									...form,
-									pinnedExitId: ""
-								});
+								markEdited({ pinnedExitId: "" });
 							},
 							children: t("pinnedUnset")
 						})
@@ -1120,13 +1111,11 @@ function CardBody(props) {
 							hint: t("probeModelsHint"),
 							models: probeModelRows,
 							loading: probeModelsLoading,
+							error: probeModelsError,
+							onRetry: () => setProbeModelsReload((n) => n + 1),
 							t,
 							onChange: (next) => {
-								setSaved(false);
-								setForm({
-									...form,
-									probeModels: next
-								});
+								markEdited({ probeModels: next });
 							}
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(TextField, {
@@ -1139,11 +1128,7 @@ function CardBody(props) {
 							max: 8,
 							step: 1,
 							onChange: (value) => {
-								setSaved(false);
-								setForm({
-									...form,
-									maxConcurrentProbes: value
-								});
+								markEdited({ maxConcurrentProbes: value });
 							}
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
@@ -1152,6 +1137,7 @@ function CardBody(props) {
 							"data-testid": "probe-all",
 							disabled: actionBusy || !form.enabled,
 							onClick: () => {
+								setProbeBase(status !== null ? status.prober.completed : 0);
 								bridgeAction({ scope: "all" });
 							},
 							children: probing ? t("probeRunning").replace("{done}", String(probeDone)).replace("{total}", String(probeTotal)) : t("probeAll")
@@ -1317,7 +1303,8 @@ const zh = {
 	invalidUrl: "请填写合法的 http(s) URL。",
 	invalidCountry: "国家码应为两个字母（如 CN），逗号分隔。",
 	invalidModel: "模型 id 不能为空。",
-	refreshError: "状态获取失败"
+	refreshError: "状态获取失败",
+	retry: "重试"
 };
 /** English dictionary, checked complete against the zh key set. */
 const en = {
@@ -1419,7 +1406,8 @@ const en = {
 	invalidUrl: "Enter a valid http(s) URL.",
 	invalidCountry: "Country codes are two letters (e.g. CN), comma-separated.",
 	invalidModel: "Model id must not be empty.",
-	refreshError: "Status fetch failed"
+	refreshError: "Status fetch failed",
+	retry: "Retry"
 };
 
 //#endregion

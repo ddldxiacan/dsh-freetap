@@ -706,6 +706,16 @@ export class ZenAdapter {
       }
       // rotate: loop re-runs #eventsFor inside the same ALS store; the pool
       // has already degraded the failed exit, so pick lands elsewhere.
+      //
+      // Close the abandoned attempt first. This branch exists precisely for
+      // the watchdog case — the body went SILENT but was never closed — so the
+      // old attempt's fetch/socket stays live until someone tears it down, and
+      // nothing did: the deadline timer was already cleared, and the iterator
+      // (whose `return()` would cancel the pending pull) was dropped on the
+      // floor. Up to MAX_ROTATES (3) hung connections leaked per turn, for the
+      // whole process lifetime. `return()` is safe here: it only queues behind
+      // an in-flight next(), and the watchdog abort below settles that.
+      await source.return?.(undefined).catch(() => {})
     }
   }
 

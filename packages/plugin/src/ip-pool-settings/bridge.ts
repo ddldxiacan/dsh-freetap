@@ -284,7 +284,12 @@ export function makeBridgeHandlers(
         return { ok: true, value: { queued } }
       }
       if (scope === 'refill') {
-        await rt.refillNow()
+        // A round already in flight drops this request by design; report that
+        // instead of answering {refilled: true} for a round that never ran.
+        const refilled = await rt.refillNow()
+        if (!refilled) {
+          return { ok: false, code: 'refill-in-flight', message: 'a refill round is already running; try again when it finishes' }
+        }
         return { ok: true, value: { refilled: true } }
       }
       // The subscription lane the settings card's 立即刷新 button drives. It is

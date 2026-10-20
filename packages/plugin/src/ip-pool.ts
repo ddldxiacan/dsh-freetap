@@ -31,7 +31,17 @@ function dataDir(): string {
   return join(homedir(), '.dsh-opencode-free')
 }
 
-/** Parse one manual proxy string into an exit id + protocol, or null. */
+/** Parse one manual proxy string into an exit id + protocol, or null.
+ *
+ * The host part is anchored in BOTH branches and the port is range-checked:
+ * the old `/^\[[^\]]+\]|[^:]+:\d{1,5}$/` let `|` split the pattern, so the
+ * bracketed-IPv6 branch had no end anchor and no port requirement — `[abc]`,
+ * `[2001:db8::1]` and `http://[::1]junk` all parsed "successfully". Every
+ * parsed row is seeded into the pool as an already-OK exit, so a mistyped row
+ * became a live proxy target that could only fail at dispatch time (and, with
+ * latency 0, outranked every real exit in pick()). Same for a port above
+ * 65535 and port 0 on the bare-host branch.
+ */
 export function parseManualProxy(
   entry: string,
 ): { id: string; protocol: 'http' | 'socks5' } | null {
@@ -40,7 +50,10 @@ export function parseManualProxy(
   const schemeMatch = /^([a-z0-9+.-]+):\/\//i.exec(trimmed)
   const scheme = schemeMatch?.[1]?.toLowerCase()
   const rest = schemeMatch ? trimmed.slice(schemeMatch[0].length) : trimmed
-  if (!/^\[[^\]]+\]|[^:]+:\d{1,5}$/.test(rest)) return null
+  const match = /^(?:\[[0-9A-Fa-f:.]+\]|[^:[\]]+):(\d{1,5})$/.exec(rest)
+  if (!match) return null
+  const port = Number(match[1])
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) return null
   if (scheme !== undefined && scheme !== 'http' && scheme !== 'socks5' && scheme !== 'https' && scheme !== 'socks4' && scheme !== 'socks5h') return null
   const protocol = scheme === 'socks5' || scheme === 'socks4' || scheme === 'socks5h' ? 'socks5' : 'http'
   return { id: trimmed, protocol }
@@ -52,45 +65,80 @@ export function parseManualProxy(
  *  them (docs/ip-pool.md 3.1/4.5). */
 export function buildPoolFromConfig(config: DshOpencodeFreeConfig): ExitPool {
   const pool = new ExitPool()
-  const ipPool = config.ipPool ?? {}
-  for (const entry of ipPool.manual ?? []) {
+  syncManualExits(pool, config.ipPool, { initial: true })
+  return pool
+}
+
+/**
+ * Reconcile the pool's MANUAL rows and the pin with the committed settings
+ * (initial boot AND every live `reconfigure`).
+ *
+ * Why this exists: the pool was built once at start and `reconfigure` never
+ * touched it, so every edit the settings card makes to `manual` or
+ * `pinnedExitId` was accepted, reported saved, and silently ignored — adding
+ * a proxy, removing one, pinning a line or clearing the pin all left routing
+ * exactly as it was. `pool.pin()`/`unpin()` were likewise never called, and
+ * the pinned id could only ever be cleared by removing the node, so an old
+ * pin survived even a rebuilt manual list.
+ *
+ * Only `source: 'manual'` rows are ours to add and drop; free/subscription
+ * nodes belong to their own layers and are never touched here. A row that
+ * survives keeps its measured health/facts (only its `pinned` flag is
+ * refreshed), so a save does not throw away probe results.
+ */
+export function syncManualExits(
+  pool: ExitPool,
+  ipPool: DshOpencodeFreeConfig['ipPool'],
+  options: { initial?: boolean } = {},
+): void {
+  const wanted = new Map<string, { id: string; protocol: 'http' | 'socks5' }>()
+  for (const entry of ipPool?.manual ?? []) {
     const parsed = parseManualProxy(entry)
-    if (!parsed) continue
-    const node: ExitNode = {
-      id: parsed.id,
-      protocol: parsed.protocol,
-      source: 'manual',
-      pinned: false,
-      exitIP: '',
-      exitLocation: '',
-      latencyMs: 0,
-      quality: gradeOf(0),
-      addedAt: Date.now(),
-    }
-    pool.add(node)
-    pool.markOk(node.id)
+    if (parsed && !wanted.has(parsed.id)) wanted.set(parsed.id, parsed)
   }
-  const pinned = ipPool.pinnedExitId?.trim()
-  if (pinned) {
-    const parsed = parseManualProxy(pinned)
-    if (parsed) {
-      const node: ExitNode = {
-        id: parsed.id,
+  const pinnedRaw = ipPool?.pinnedExitId?.trim() ?? ''
+  const pinned = pinnedRaw === '' ? null : parseManualProxy(pinnedRaw)
+  // The pin is a routable exit in its own right (3.6): seed it even when the
+  // user only filled the pin box.
+  if (pinned !== null && !wanted.has(pinned.id)) wanted.set(pinned.id, pinned)
+
+  for (const entry of pool.list()) {
+    if (entry.source !== 'manual') continue
+    if (!wanted.has(entry.id)) pool.remove(entry.id)
+  }
+
+  for (const [id, parsed] of wanted) {
+    const isPinned = pinned !== null && pinned.id === id
+    const existing = pool.get(id)
+    if (existing === undefined) {
+      pool.add({
+        id,
         protocol: parsed.protocol,
         source: 'manual',
-        pinned: true,
+        pinned: isPinned,
         exitIP: '',
         exitLocation: '',
         latencyMs: 0,
         quality: gradeOf(0),
         addedAt: Date.now(),
-      }
-      pool.add(node)
-      pool.markOk(node.id)
-      pool.pin(node.id)
+      })
+      pool.markOk(id)
+      continue
+    }
+    if (existing.pinned !== isPinned || existing.protocol !== parsed.protocol) {
+      pool.add({ ...existing, protocol: parsed.protocol, pinned: isPinned })
     }
   }
-  return pool
+
+  // Pin state: match the setting exactly, including clearing it. On boot the
+  // pin is already correct, but running this unconditionally keeps the two
+  // paths identical instead of letting reconfigure drift again.
+  if (pinned === null) {
+    if (pool.pinnedId !== '') pool.unpin()
+  } else {
+    pool.pin(pinned.id)
+  }
+  void options
 }
 
 export interface IpPoolRuntime {
@@ -118,7 +166,7 @@ export interface IpPoolRuntime {
   /** Enqueue one exit's probe (bridge /probe scope 'exit'). */
   probeExit(exitId: string): Promise<number>
   /** One manual refill round (bridge /probe scope 'refill'). */
-  refillNow(): Promise<void>
+  refillNow(): Promise<boolean>
   /** One subscription refresh round (bridge 立即刷新, docs §5.2). */
   refreshSubscriptions(): Promise<void>
   dispose(): Promise<void>
@@ -205,6 +253,11 @@ export async function startIpPool(
   /** Apply the config to the live objects (initial start + reconfigure). */
   const applyConfig = (): void => {
     const current = config.ipPool ?? {}
+    // The exit table itself: manual rows and the pin follow the saved settings.
+    // Without this every manual/pin edit was a silent no-op (see
+    // syncManualExits). It runs BEFORE the install decision below so a save
+    // that only adds the first manual row also engages routing.
+    syncManualExits(pool, current)
     pool.setTargetSize(current.free?.targetSize ?? 20)
     admissionDeps.blockedCountries = current.free?.blockedCountries
     admissionDeps.smokeModel = probeModels[0]
@@ -273,28 +326,30 @@ export async function startIpPool(
       kind: 'probe-all',
       run: async () => {
         for (const model of models) {
-          // The smoke rides the shared admission deps; point its model at the
-          // current probe-model before each pass (per-exit serial, §4.1).
-          admissionDeps.smokeModel = model
           // Free exits re-run the full candidate chain (echo→tunnel→smoke) —
           // their facts may have drifted; trusted exits run the smoke only
           // (docs §4.5 manual/subscription path). Pinned rides the trusted
           // path so a blocked echo endpoint never evicts the user's line.
+          // The model rides the CALL, never the shared deps: probe workers
+          // run concurrently, so a mutated deps.smokeModel was clobbered by
+          // another worker and the smoke ran against a different model than
+          // the health/ban bookkeeping below recorded.
           const verdict = entry.source === 'free'
             ? await admitCandidate(admissionDeps, {
               address: entry.id,
               protocol: entry.protocol,
               source: 'free',
-            })
+            }, { smokeModel: model })
             : await admitTrusted(admissionDeps, {
               address: entry.id,
               protocol: entry.protocol,
               source: entry.source === 'manual' ? 'manual' : 'subscription',
-            }, { pinned: entry.pinned, previous: { exitIP: entry.exitIP, exitLocation: entry.exitLocation, latencyMs: entry.latencyMs, quality: entry.quality } })
+            }, { pinned: entry.pinned, smokeModel: model, previous: { exitIP: entry.exitIP, exitLocation: entry.exitLocation, latencyMs: entry.latencyMs, quality: entry.quality } })
           if (verdict.admitted && verdict.node) {
             // Refresh the node's facts (admission re-measured them).
             pool.add({ ...entry, ...verdict.node, pinned: entry.pinned })
             if (verdict.limited) pool.markLimited(entry.id)
+            else if (verdict.degraded) pool.markDeadStrike(entry.id)
             else pool.markOk(entry.id, model)
           } else {
             pool.markDeadStrike(entry.id)
@@ -315,17 +370,17 @@ export async function startIpPool(
       const models = probeModels.length > 0 ? [...probeModels] : ['big-pickle']
       const { admitCandidate, admitTrusted } = await import('./pool/admission.ts')
       for (const model of models) {
-        admissionDeps.smokeModel = model
         const verdict = entry.source === 'free'
-          ? await admitCandidate(admissionDeps, { address: entry.id, protocol: entry.protocol, source: 'free' })
+          ? await admitCandidate(admissionDeps, { address: entry.id, protocol: entry.protocol, source: 'free' }, { smokeModel: model })
           : await admitTrusted(admissionDeps, {
             address: entry.id,
             protocol: entry.protocol,
             source: entry.source === 'manual' ? 'manual' : 'subscription',
-          }, { pinned: entry.pinned, previous: { exitIP: entry.exitIP, exitLocation: entry.exitLocation, latencyMs: entry.latencyMs, quality: entry.quality } })
+          }, { pinned: entry.pinned, smokeModel: model, previous: { exitIP: entry.exitIP, exitLocation: entry.exitLocation, latencyMs: entry.latencyMs, quality: entry.quality } })
         if (verdict.admitted && verdict.node) {
           pool.add({ ...entry, ...verdict.node, pinned: entry.pinned })
           if (verdict.limited) pool.markLimited(entry.id)
+          else if (verdict.degraded) pool.markDeadStrike(entry.id)
           else pool.markOk(entry.id, model)
         } else {
           pool.markDeadStrike(entry.id)
@@ -382,7 +437,9 @@ export async function startIpPool(
     probeAll,
     probeExit,
     async refillNow() {
-      if (refill !== null) await refill.tick()
+      // false = a round was already running and this request was dropped;
+      // the bridge reports that instead of claiming a refill happened.
+      return refill !== null ? refill.tick() : false
     },
     async refreshSubscriptions() {
       await subscriptions?.refreshNow()

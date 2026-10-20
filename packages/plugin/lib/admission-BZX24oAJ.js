@@ -1,6 +1,6 @@
-import { f as disguiseHeaders, h as stableID, m as randomID, p as opencodeUserAgent, r as ZEN_BASE_URL, u as canonicalSessionID } from "./catalog-C1xAp5cG.js";
-import { a as freeLaneGateTool, t as FREE_LANE_GATE_TOOL_NAMES } from "./messages-B5qaHi-o.js";
-import { n as exitProxyUri } from "./dispatcher-Ln4ed3nE.js";
+import { f as disguiseHeaders, h as stableID, m as randomID, p as opencodeUserAgent, r as ZEN_BASE_URL, u as canonicalSessionID } from "./catalog-CaaY1TXy.js";
+import { a as freeLaneGateTool, t as FREE_LANE_GATE_TOOL_NAMES } from "./messages-CbgXeWiR.js";
+import { n as exitProxyUri } from "./dispatcher-CB_rfVFN.js";
 
 //#region src/pool/pool.ts
 /** Quality grade from admission latency (GoProxy thresholds). */
@@ -479,10 +479,13 @@ function withTimeout(promise, ms, label) {
 		});
 	});
 }
+/** Latency stand-in for a trusted exit that was never measured successfully:
+*  sorts last in `pick()`'s ascending-latency comparison instead of first. */
+const UNMEASURED_LATENCY_MS = Number.MAX_SAFE_INTEGER;
 async function admitCandidate(deps, candidate, options = {}) {
 	const zenBase = deps.zenBaseUrl ?? ZEN_BASE_URL;
 	const timeout = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-	const smokeModel = deps.smokeModel ?? "big-pickle";
+	const smokeModel = options.smokeModel ?? deps.smokeModel ?? "big-pickle";
 	const probeHeaders = disguiseHeaders({
 		session: canonicalSessionID(`admission:${candidate.address}`),
 		request: randomID("req", 16),
@@ -598,14 +601,30 @@ async function admitCandidate(deps, candidate, options = {}) {
 /** Admit a trusted-source candidate (manual/subscription/goproxy): smoke
 *  only; failure warns instead of rejecting for pinned (docs 4.5). Existing
 *  pool facts are PRESERVED on the failure fallback — a failed smoke wipes
-*  neither a previously measured exitIP/latency nor the routing key. */
+*  neither a previously measured exitIP/latency nor the routing key.
+*
+* A failed smoke still returns `admitted: true` (the user's line stays in the
+* table rather than vanishing), but it now ALSO reports `degraded: true` plus
+* the reason, and it no longer fabricates healthy facts. That distinction was
+* missing and it cost real routing quality: callers treated the fallback as a
+* success and called `markOk()`, and `latencyMs: 0` graded the node 'S', so a
+* dead subscription/manual exit was both reported healthy in the settings card
+* and sorted first by `pick()` above every genuinely measured exit. The
+* fallback now keeps the node `unknown` (callers mark it dead) and sorts last
+* via Grade 'C' with a sentinel latency when nothing was ever measured. */
 async function admitTrusted(deps, candidate, options = {}) {
-	const result = await admitCandidate(deps, candidate, { pinned: options.pinned });
+	const result = await admitCandidate(deps, candidate, {
+		pinned: options.pinned,
+		...options.smokeModel !== void 0 ? { smokeModel: options.smokeModel } : {}
+	});
 	if (result.admitted) return result;
 	deps.logger?.warn(`dsh-opencode-free: trusted exit ${candidate.address} failed admission (${result.reason}); admitted with ${options.previous?.exitIP ? "previous" : "unknown"} exit facts`);
 	const previous = options.previous;
+	const measured = previous !== void 0 && previous.latencyMs > 0;
 	return {
 		admitted: true,
+		degraded: true,
+		reason: result.reason,
 		node: {
 			id: candidate.address,
 			protocol: candidate.protocol,
@@ -613,12 +632,12 @@ async function admitTrusted(deps, candidate, options = {}) {
 			pinned: options.pinned ?? false,
 			exitIP: previous?.exitIP ?? "",
 			exitLocation: previous?.exitLocation ?? "",
-			latencyMs: previous?.latencyMs ?? 0,
-			quality: previous?.quality ?? gradeOf(previous?.latencyMs ?? 0),
+			latencyMs: measured ? previous.latencyMs : UNMEASURED_LATENCY_MS,
+			quality: measured ? previous.quality ?? gradeOf(previous.latencyMs) : "C",
 			addedAt: Date.now()
 		}
 	};
 }
 
 //#endregion
-export { ExitPool as a, coarseScreenBatch as i, admitTrusted as n, gradeOf as o, coarseScreen as r, admitCandidate as t };
+export { coarseScreenBatch as a, coarseScreen as i, admitCandidate as n, ExitPool as o, admitTrusted as r, gradeOf as s, UNMEASURED_LATENCY_MS as t };

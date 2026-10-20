@@ -35,7 +35,7 @@ const assemble: AssembleIpPool = async (config) => {
     reconfigure: async (next: Record<string, unknown>) => { reconfigures.push(next) },
     probeAll: async () => 0,
     probeExit: async () => 1,
-    refillNow: async () => {},
+    refillNow: async () => true,
     refreshSubscriptions: async () => {},
     dispose: async () => {},
   }

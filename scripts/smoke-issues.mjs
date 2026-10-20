@@ -89,11 +89,17 @@ try {
   os.homedir = () => scratch
   syncBuiltinESMExports()
   globalThis.fetch = async (url, init) => {
-    if (String(url).includes('/zen/v1/models')) {
+    // Match the models endpoint by its PATH SHAPE, not by a lane segment: the
+    // adapter moved its live catalog to /inference/v1/models (issue #72), and
+    // the old '/zen/v1/models' literal silently stopped intercepting — the
+    // fetch fell through to the real network, so this smoke passed or failed
+    // depending on what production happened to serve that minute.
+    const absolute = new URL(String(url), httpOrigin)
+    if (/\/v1\/models$/.test(absolute.pathname)) {
       return savedFetch(`${httpOrigin}/models`, init)
     }
     if (String(url).includes('models.dev')) return savedFetch(`${httpOrigin}/metadata`, init)
-    return savedFetch(new URL(String(url), httpOrigin), init)
+    return savedFetch(absolute, init)
   }
   const llm = new LlmRuntime(ctx)
   new WebServer(ctx)

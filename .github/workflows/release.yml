@@ -4,11 +4,13 @@ name: Release
 # version: it is written into packages/plugin/package.json and the root
 # package.json before building, so the two never drift.
 #
-#   git tag v0.4.1 && git push origin v0.4.1
+#   git tag v0.4.2 && git push origin v0.4.2
 #
 # Artifacts produced:
 #   - packages/plugin/lib/ committed back to master (keeps `github:` installs working)
-#   - GitHub Release with dsh-opencode-free-dsh-plugin.tgz (version-free asset name)
+#   - GitHub Release with two names for the same tarball:
+#       dsh-opencode-free-dsh-plugin.tgz            (version-free: first install)
+#       dsh-opencode-free-dsh-plugin-<version>.tgz  (tag-scoped: the update path)
 
 on:
   push:
@@ -84,10 +86,22 @@ jobs:
         working-directory: packages/plugin
         run: |
           npm pack
-          # A version-free asset name keeps releases/latest/download/<name> valid
-          # across releases; the asset is replaced each time.
-          mv ./*.tgz "${RUNNER_TEMP}/dsh-opencode-free-dsh-plugin.tgz"
-          ls -la "${RUNNER_TEMP}/dsh-opencode-free-dsh-plugin.tgz"
+          # TWO asset names, both cut from the same tarball:
+          #
+          #  * a version-free name, so releases/latest/download/<name> stays a
+          #    stable bookmark for first installs, and
+          #  * a VERSIONED name, because that is the only one an existing
+          #    install can actually update from. pnpm resolves a tarball URL
+          #    once and then pins it in pnpm-lock.yaml together with its
+          #    integrity hash: re-adding the same URL is a no-op ("Lockfile is
+          #    up to date, resolution step is skipped") even with --force, so
+          #    `dsh plugin add .../releases/latest/download/<same-name>.tgz`
+          #    silently kept the OLD version forever. A tag-scoped URL differs
+          #    each release, so pnpm resolves it and the update lands.
+          npm_tgz="$(ls ./*.tgz)"
+          cp "${npm_tgz}" "${RUNNER_TEMP}/dsh-opencode-free-dsh-plugin.tgz"
+          cp "${npm_tgz}" "${RUNNER_TEMP}/dsh-opencode-free-dsh-plugin-${{ steps.version.outputs.version }}.tgz"
+          ls -la "${RUNNER_TEMP}"/*.tgz
 
       - name: Commit the prebuilt output and version bump
         run: |
@@ -119,7 +133,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: dsh-opencode-free v${{ steps.version.outputs.version }}
-          files: ${{ runner.temp }}/dsh-opencode-free-dsh-plugin.tgz
+          files: |
+            ${{ runner.temp }}/dsh-opencode-free-dsh-plugin.tgz
+            ${{ runner.temp }}/dsh-opencode-free-dsh-plugin-${{ steps.version.outputs.version }}.tgz
           generate_release_notes: true
           fail_on_unmatched_files: true
 

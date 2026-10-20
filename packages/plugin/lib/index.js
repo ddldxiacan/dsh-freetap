@@ -1,6 +1,6 @@
-import { d as deriveRequestIDs, f as disguiseHeaders, n as ModelCatalog, o as defaultCachePath, r as ZEN_BASE_URL } from "./catalog-C1xAp5cG.js";
-import { c as isResponsesModel, i as ensureResponsesFreeLaneShape, n as GATE_TOOL_ALIASES, o as toPiContext, r as ensureFreeLaneShape, s as apiForModel } from "./messages-B5qaHi-o.js";
-import { r as routingContext } from "./dispatcher-Ln4ed3nE.js";
+import { d as deriveRequestIDs, f as disguiseHeaders, n as ModelCatalog, o as defaultCachePath, r as ZEN_BASE_URL } from "./catalog-CaaY1TXy.js";
+import { c as isResponsesModel, i as ensureResponsesFreeLaneShape, n as GATE_TOOL_ALIASES, o as toPiContext, r as ensureFreeLaneShape, s as apiForModel } from "./messages-CbgXeWiR.js";
+import { r as routingContext } from "./dispatcher-CB_rfVFN.js";
 import { a as isRegionBlocked, n as normalizeSubscriptionUserAgent, r as classifyStreamFailure, s as shouldRotate, t as DEFAULT_SUBSCRIPTION_USER_AGENT } from "./subscription-defaults-DEuRqSU9.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -36,7 +36,12 @@ function classifyError(text) {
 	return "UPSTREAM";
 }
 function isContextOverflow(message, contextWindow) {
-	return message.stopReason === "stop" && message.usage.input > contextWindow;
+	if (contextWindow > 0) {
+		const inputTokens = message.usage.input + message.usage.cacheRead;
+		if (message.stopReason === "stop" && inputTokens > contextWindow) return true;
+		if (message.stopReason === "length" && message.usage.output === 0 && inputTokens >= contextWindow * .99) return true;
+	}
+	return false;
 }
 /** mapStopReason (dsh-llm-pi-ai index.js:1286-1330). */
 function mapStopReason(message, contextWindow) {
@@ -758,6 +763,7 @@ var ZenAdapter = class {
 				})(), model.contextWindow, GATE_TOOL_ALIASES);
 				return;
 			}
+			await source.return?.(void 0).catch(() => {});
 		}
 	}
 	#eventsFor(options, context, ids, model, attempt = 0) {
@@ -1438,7 +1444,11 @@ function makeBridgeHandlers(runtime, settings, deps = {}) {
 				value: { queued: await rt.probeAll() }
 			};
 			if (scope === "refill") {
-				await rt.refillNow();
+				if (!await rt.refillNow()) return {
+					ok: false,
+					code: "refill-in-flight",
+					message: "a refill round is already running; try again when it finishes"
+				};
 				return {
 					ok: true,
 					value: { refilled: true }
@@ -1484,7 +1494,7 @@ function makeBridgeHandlers(runtime, settings, deps = {}) {
 			};
 		},
 		async models() {
-			const { staticFreeModels } = await import("./catalog-Bhs24T7U.js");
+			const { staticFreeModels } = await import("./catalog-vIPYIhia.js");
 			const rows = staticFreeModels.map((id) => ({
 				id,
 				verified: true
@@ -1566,7 +1576,7 @@ function makeBridgeRoutes(handlers, deps = {}) {
 //#endregion
 //#region src/ip-pool-settings/apply.ts
 const defaultAssemble = async (config, logger) => {
-	const { startIpPool } = await import("./ip-pool-DtOWa_ej.js");
+	const { startIpPool } = await import("./ip-pool-PVNnCUar.js");
 	return startIpPool(config, logger);
 };
 /**

@@ -75,7 +75,10 @@ allowBuilds:
 dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
 ```
 
-链接不带版本号是有意为之，这样它会一直指向最新 Release。
+链接不带版本号，适合**首次安装**。它不能用来更新：pnpm 会把你解析过的 URL 连同 tarball 的
+完整性哈希一起固定在 `pnpm-lock.yaml` 里，URL 不变就被当成「已解析」，输出
+「Lockfile is up to date, resolution step is skipped」——再执行一次装回来的还是旧版本。
+更新要用带 tag 的地址（见[更新](#更新)）。
 
 ### 为什么必须先做第 2 步
 
@@ -126,16 +129,36 @@ dsh plugin --profile web add @dsh-opencode-free/dsh-plugin
 
 ### 更新
 
-按你当初安装的来源选一条，都是就地更新：
+按你当初安装的来源选一条，都是就地更新。
+
+**Release tarball** —— 用带版本号的那个资产，不要用 `latest`：
 
 ```sh
-# Release tarball（重跑安装 URL 也是同样效果）
+# 把 0.4.2 换成你要升到的版本
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.2/dsh-opencode-free-dsh-plugin-0.4.2.tgz
+```
+
+不带版本号的 `releases/latest/download/...` 地址**无法**更新已安装的版本：pnpm 早已把该
+URL 连同完整性哈希固定进 `pnpm-lock.yaml`，同一个 URL 会被判为已解析
+（「Lockfile is up to date, resolution step is skipped」），加 `--force`、`pnpm update`、
+`pnpm install --force`、删掉 `node_modules` 重装都绕不过去——只有每次发布都不同的 URL
+才会重新解析。如果你正卡在还没有带版本资产的旧版本上，做一次性迁移（先移除再装，或者
+直接用带版本的地址，后者即使在旧版本上也能生效）：
+
+```sh
+dsh plugin --profile web remove @dsh-opencode-free/dsh-plugin
 dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
+```
 
-# git 安装：跟随 master
+**git 安装**：跟随 master（git 依赖每次都会重新解析）：
+
+```sh
 dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free
+```
 
-# npm 安装
+**npm 安装**：
+
+```sh
 dsh plugin --profile web add @dsh-opencode-free/dsh-plugin@latest
 ```
 

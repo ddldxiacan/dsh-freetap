@@ -104,6 +104,7 @@ export const zh = {
   invalidCountry: '国家码应为两个字母（如 CN），逗号分隔。',
   invalidModel: '模型 id 不能为空。',
   refreshError: '状态获取失败',
+  retry: '重试',
 } as const
 
 /** English dictionary, checked complete against the zh key set. */
@@ -207,6 +208,7 @@ export const en: Record<keyof typeof zh, string> = {
   invalidCountry: 'Country codes are two letters (e.g. CN), comma-separated.',
   invalidModel: 'Model id must not be empty.',
   refreshError: 'Status fetch failed',
+  retry: 'Retry',
 }
 
 export type IpPoolKey = keyof typeof zh

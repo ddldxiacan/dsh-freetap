@@ -299,6 +299,15 @@ export class ModelCatalog {
   #prices: Map<string, ModelPrice> = new Map()
   #pricesReady = false
   #lastError = ''
+  /**
+   * Per-source errors, folded into `#lastError` once a round settles. They are
+   * kept apart because both sources run concurrently: with one shared field,
+   * a slow-but-healthy Zen refresh landing after a failed models.dev fetch
+   * cleared the error (and a models.dev failure landing after a good Zen
+   * refresh reported a broken catalog the picker did not actually have).
+   */
+  #zenError = ''
+  #metadataError = ''
   #zenFailed = false
   #refreshSeconds: number
   #cachePath?: string
@@ -367,6 +376,11 @@ export class ModelCatalog {
 
   async #refreshRound(): Promise<void> {
     await Promise.allSettled([this.refreshZen(), this.refreshMetadata()])
+    // Fold both halves AFTER they settle: each half only records its own
+    // reason (see #zenError/#metadataError), so the order in which the two
+    // concurrent requests finish can no longer decide what the user is told.
+    const errors = [this.#zenError, this.#metadataError].filter((message) => message !== '')
+    this.#lastError = errors.join('; ')
     if (this.#onRefresh) {
       try {
         this.#onRefresh(this.snapshot(), this.#lastError)
@@ -382,10 +396,10 @@ export class ModelCatalog {
       this.#zen = new Set(ids)
       this.#zenFailed = false
       this.#updatedAt = this.#now()
-      this.#lastError = ''
+      this.#zenError = ''
     } catch (err) {
       this.#zenFailed = true
-      this.#lastError = err instanceof Error ? err.message : String(err)
+      this.#zenError = err instanceof Error ? err.message : String(err)
     }
   }
 
@@ -406,13 +420,22 @@ export class ModelCatalog {
       }
     }
     try {
-      const response = await withTimeout(this.#fetch(this.#metadataUrl, { headers: { accept: 'application/json' } }))
-      if (!response.ok) throw new Error(`models.dev returned HTTP ${response.status}`)
-      const data = (await response.json()) as unknown
-      const prices = decodeModelsDev(data)
+      // ONE deadline for the whole exchange (headers AND body): the previous
+      // helper built an AbortController it never passed to fetch, so a peer
+      // that accepted the connection and then went silent hung the refresh
+      // round forever — and a peer that sent headers then stalled the body
+      // hung it just as well. signal is threaded into fetch, which aborts both
+      // phases.
+      const { value: raw, } = await withDeadline(FETCH_TIMEOUT_MS, async (signal) => {
+        const response = await this.#fetch(this.#metadataUrl, { headers: { accept: 'application/json' }, signal })
+        if (!response.ok) throw new Error(`models.dev returned HTTP ${response.status}`)
+        return await response.text()
+      })
+      const prices = decodeModelsDev(JSON.parse(raw) as unknown)
       if (prices.size === 0) throw new Error('models.dev contains no OpenCode model metadata')
       this.#prices = prices
       this.#pricesReady = true
+      this.#metadataError = ''
       if (this.#cachePath) await saveMetadataCache(this.#cachePath, prices, this.#now())
     } catch (err) {
       // Network failure with a cached copy is not fatal: load the cache.
@@ -421,10 +444,11 @@ export class ModelCatalog {
         if (cached && cached.size > 0) {
           this.#prices = cached
           this.#pricesReady = true
+          this.#metadataError = ''
           return
         }
       }
-      this.#lastError = err instanceof Error ? err.message : String(err)
+      this.#metadataError = err instanceof Error ? err.message : String(err)
     }
   }
 
@@ -538,11 +562,28 @@ export class ModelCatalog {
   }
 }
 
-async function withTimeout(promise: Promise<Response>, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
+/**
+ * Run `task` under one abortable deadline, aborting its signal when the clock
+ * runs out. The old helper built an AbortController and then never used its
+ * signal, so a peer that accepted the connection and went silent hung the
+ * caller forever (live-reproduced: a stalling server kept the refresh round
+ * past 40s with FETCH_TIMEOUT_MS = 30s), and a peer that sent headers then
+ * stalled the body hung it just as well.
+ */
+async function withDeadline<T>(
+  timeoutMs: number,
+  task: (signal: AbortSignal) => Promise<T>,
+): Promise<{ value: T }> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    return await promise
+    return { value: await task(controller.signal) }
+  } catch (err) {
+    if (controller.signal.aborted) {
+      const reason = err instanceof Error ? err.message : String(err)
+      throw new Error(`request timed out after ${timeoutMs}ms (${reason})`)
+    }
+    throw err
   } finally {
     clearTimeout(timer)
   }
@@ -554,18 +595,20 @@ export async function fetchZenModels(
   fetchImpl: typeof fetch,
   userAgent: string,
 ): Promise<string[]> {
-  const response = await withTimeout(
-    fetchImpl(`${zenBaseUrl.replace(/\/+$/, '')}/v1/models`, {
+  const { value: raw } = await withDeadline(FETCH_TIMEOUT_MS, async (signal) => {
+    const response = await fetchImpl(`${zenBaseUrl.replace(/\/+$/, '')}/v1/models`, {
       headers: {
         authorization: 'Bearer public',
         'user-agent': userAgent,
         'x-opencode-client': 'cli',
         accept: 'application/json',
       },
-    }),
-  )
-  if (!response.ok) throw new Error(`models endpoint returned HTTP ${response.status}`)
-  const payload = (await response.json()) as { data?: Array<{ id?: unknown }> }
+      signal,
+    })
+    if (!response.ok) throw new Error(`models endpoint returned HTTP ${response.status}`)
+    return await response.text()
+  })
+  const payload = JSON.parse(raw) as { data?: Array<{ id?: unknown }> }
   const models: string[] = []
   for (const item of payload.data ?? []) {
     if (typeof item?.id === 'string' && item.id.length > 0) models.push(item.id)

@@ -223,7 +223,10 @@ export class SubscriptionFetcher {
               })
               if (!this.#stopped && verdict.admitted && verdict.node) {
                 if (this.#deps.pool.add(verdict.node)) {
-                  this.#deps.pool.markOk(verdict.node.id)
+                  // A degraded verdict means the smoke failed and the node was
+                  // only kept for a later retry: never report it healthy.
+                  if (verdict.degraded) this.#deps.pool.markDeadStrike(verdict.node.id)
+                  else this.#deps.pool.markOk(verdict.node.id)
                   this.#state.convertedAdmitted += 1
                   const served = exit.node
                   this.#state.pendingConversion = this.#state.pendingConversion.filter(
@@ -258,7 +261,10 @@ export class SubscriptionFetcher {
           })
           if (!this.#stopped && verdict.admitted && verdict.node) {
             if (this.#deps.pool.add(verdict.node)) {
-              this.#deps.pool.markOk(verdict.node.id)
+              // Same rule as the converted lane: a degraded verdict is a kept
+              // node, not a healthy one.
+              if (verdict.degraded) this.#deps.pool.markDeadStrike(verdict.node.id)
+              else this.#deps.pool.markOk(verdict.node.id)
               this.#state.plaintextAdmitted += 1
             }
           }

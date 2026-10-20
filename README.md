@@ -78,7 +78,12 @@ which is all that is needed. (Upstream ships the same two as `false`.)
 dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
 ```
 
-The link is version-free on purpose, so it keeps tracking the newest release.
+The version-free link is a stable bookmark for the *first* install. It is
+deliberately **not** the update command: pnpm records the URL it resolved in
+`pnpm-lock.yaml` together with the tarball's integrity hash, and a URL that
+never changes is treated as already resolved ("Lockfile is up to date,
+resolution step is skipped") — re-adding it keeps the version you have. Use the
+tag-scoped asset for updates (see [Updating](#updating)).
 
 ### Why step 2 comes first
 
@@ -134,16 +139,38 @@ the **dsh-opencode-free** group.
 
 ### Updating
 
-Pick the source you installed from; each updates in place:
+Pick the source you installed from; each updates in place.
+
+**Release tarball.** Use the tag-scoped asset, not the version-free one:
 
 ```sh
-# release tarball (also what re-running the install URL does)
+# replace 0.4.2 with the release you are moving to
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.2/dsh-opencode-free-dsh-plugin-0.4.2.tgz
+```
+
+The version-free `releases/latest/download/...` URL does **not** update an
+existing install: pnpm resolved it once and pinned the URL plus its integrity
+hash in `pnpm-lock.yaml`, so re-adding it is a no-op ("Lockfile is up to date,
+resolution step is skipped") — even with `--force`, `pnpm update`,
+`pnpm install --force`, or a deleted `node_modules`. Only a URL that differs per
+release re-resolves. If you are stuck on an older build that predates the
+versioned asset, do the one-time move with an explicit remove + add (or the
+versioned URL, which works even then):
+
+```sh
+dsh plugin --profile web remove @dsh-opencode-free/dsh-plugin
 dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
+```
 
-# git install: follow master
+**git install**: follow master (a git spec re-resolves each time):
+
+```sh
 dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free
+```
 
-# npm install
+**npm install**:
+
+```sh
 dsh plugin --profile web add @dsh-opencode-free/dsh-plugin@latest
 ```
 

@@ -108,7 +108,10 @@ var PoolRoutingDispatcher = class {
 		if (exitId === null) return this.#direct.dispatch(options, handler);
 		const agent = this.#agentFor(exitId);
 		if (!agent) return this.#direct.dispatch(options, handler);
-		return agent.dispatch(options, this.#observe(exitId, model, session, handler));
+		const observed = this.#observe(exitId, model, session, handler);
+		const dispatched = agent.dispatch(options, observed);
+		if (!dispatched) observed.__disarm?.();
+		return dispatched;
 	}
 	/**
 	* Wrap the downstream handler with the passive-signal observer
@@ -169,7 +172,7 @@ var PoolRoutingDispatcher = class {
 		const disarm = () => {
 			clearTimeout(sentinel);
 		};
-		return {
+		const observed = {
 			onRequestStart: (controller, context) => {
 				liveController = controller;
 				sawRequestStart = true;
@@ -219,6 +222,8 @@ var PoolRoutingDispatcher = class {
 			onBodySent: (chunk) => forward("onBodySent", [chunk]),
 			onRequestSent: () => forward("onRequestSent", [])
 		};
+		observed.__disarm = disarm;
+		return observed;
 	}
 	close() {
 		this.#closed = true;

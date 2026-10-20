@@ -1,8 +1,8 @@
-import "./catalog-C1xAp5cG.js";
-import "./messages-B5qaHi-o.js";
-import "./dispatcher-Ln4ed3nE.js";
+import "./catalog-CaaY1TXy.js";
+import "./messages-CbgXeWiR.js";
+import "./dispatcher-CB_rfVFN.js";
 import { i as createRotateDelegate, n as normalizeSubscriptionUserAgent, o as setRotateDelegate } from "./subscription-defaults-DEuRqSU9.js";
-import { a as ExitPool, i as coarseScreenBatch, n as admitTrusted, o as gradeOf, t as admitCandidate } from "./admission-BejAxGo3.js";
+import { a as coarseScreenBatch, n as admitCandidate, o as ExitPool, r as admitTrusted, s as gradeOf } from "./admission-BZX24oAJ.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
@@ -529,12 +529,21 @@ var RefillScheduler = class {
 			this.#timer = null;
 		}
 	}
-	/** One refill round; skipped while a previous round is still draining. */
+	/** True while a round is draining (a manual `tick()` would be dropped). */
+	get running() {
+		return this.#running;
+	}
+	/** One refill round. Returns false when a round was already in flight and
+	*  the request was therefore SKIPPED — the caller must not report "refilled"
+	*  for a round it did not start (the settings card's 立即补充 button used to
+	*  do exactly that: a click landing during the periodic round answered
+	*  `{refilled: true}` with no progress and no admission). */
 	async tick() {
-		if (this.#running) return;
+		if (this.#running) return false;
 		this.#running = true;
 		try {
 			await this.#round();
+			return true;
 		} finally {
 			this.#running = false;
 		}
@@ -1562,7 +1571,8 @@ var SubscriptionFetcher = class {
 					});
 					if (!this.#stopped && verdict.admitted && verdict.node) {
 						if (this.#deps.pool.add(verdict.node)) {
-							this.#deps.pool.markOk(verdict.node.id);
+							if (verdict.degraded) this.#deps.pool.markDeadStrike(verdict.node.id);
+							else this.#deps.pool.markOk(verdict.node.id);
 							this.#state.convertedAdmitted += 1;
 							const served = exit.node;
 							this.#state.pendingConversion = this.#state.pendingConversion.filter((node) => node !== served);
@@ -1590,7 +1600,8 @@ var SubscriptionFetcher = class {
 				});
 				if (!this.#stopped && verdict.admitted && verdict.node) {
 					if (this.#deps.pool.add(verdict.node)) {
-						this.#deps.pool.markOk(verdict.node.id);
+						if (verdict.degraded) this.#deps.pool.markDeadStrike(verdict.node.id);
+						else this.#deps.pool.markOk(verdict.node.id);
 						this.#state.plaintextAdmitted += 1;
 					}
 				}
@@ -1630,14 +1641,27 @@ var SubscriptionFetcher = class {
 function dataDir() {
 	return join(homedir(), ".dsh-opencode-free");
 }
-/** Parse one manual proxy string into an exit id + protocol, or null. */
+/** Parse one manual proxy string into an exit id + protocol, or null.
+*
+* The host part is anchored in BOTH branches and the port is range-checked:
+* the old `/^\[[^\]]+\]|[^:]+:\d{1,5}$/` let `|` split the pattern, so the
+* bracketed-IPv6 branch had no end anchor and no port requirement — `[abc]`,
+* `[2001:db8::1]` and `http://[::1]junk` all parsed "successfully". Every
+* parsed row is seeded into the pool as an already-OK exit, so a mistyped row
+* became a live proxy target that could only fail at dispatch time (and, with
+* latency 0, outranked every real exit in pick()). Same for a port above
+* 65535 and port 0 on the bare-host branch.
+*/
 function parseManualProxy(entry) {
 	const trimmed = entry.trim();
 	if (trimmed === "") return null;
 	const schemeMatch = /^([a-z0-9+.-]+):\/\//i.exec(trimmed);
 	const scheme = schemeMatch?.[1]?.toLowerCase();
 	const rest = schemeMatch ? trimmed.slice(schemeMatch[0].length) : trimmed;
-	if (!/^\[[^\]]+\]|[^:]+:\d{1,5}$/.test(rest)) return null;
+	const match = /^(?:\[[0-9A-Fa-f:.]+\]|[^:[\]]+):(\d{1,5})$/.exec(rest);
+	if (!match) return null;
+	const port = Number(match[1]);
+	if (!Number.isInteger(port) || port < 1 || port > 65535) return null;
 	if (scheme !== void 0 && scheme !== "http" && scheme !== "socks5" && scheme !== "https" && scheme !== "socks4" && scheme !== "socks5h") return null;
 	return {
 		id: trimmed,
@@ -1650,45 +1674,66 @@ function parseManualProxy(entry) {
 *  them (docs/ip-pool.md 3.1/4.5). */
 function buildPoolFromConfig(config) {
 	const pool = new ExitPool();
-	const ipPool = config.ipPool ?? {};
-	for (const entry of ipPool.manual ?? []) {
+	syncManualExits(pool, config.ipPool, { initial: true });
+	return pool;
+}
+/**
+* Reconcile the pool's MANUAL rows and the pin with the committed settings
+* (initial boot AND every live `reconfigure`).
+*
+* Why this exists: the pool was built once at start and `reconfigure` never
+* touched it, so every edit the settings card makes to `manual` or
+* `pinnedExitId` was accepted, reported saved, and silently ignored — adding
+* a proxy, removing one, pinning a line or clearing the pin all left routing
+* exactly as it was. `pool.pin()`/`unpin()` were likewise never called, and
+* the pinned id could only ever be cleared by removing the node, so an old
+* pin survived even a rebuilt manual list.
+*
+* Only `source: 'manual'` rows are ours to add and drop; free/subscription
+* nodes belong to their own layers and are never touched here. A row that
+* survives keeps its measured health/facts (only its `pinned` flag is
+* refreshed), so a save does not throw away probe results.
+*/
+function syncManualExits(pool, ipPool, options = {}) {
+	const wanted = /* @__PURE__ */ new Map();
+	for (const entry of ipPool?.manual ?? []) {
 		const parsed = parseManualProxy(entry);
-		if (!parsed) continue;
-		const node = {
-			id: parsed.id,
-			protocol: parsed.protocol,
-			source: "manual",
-			pinned: false,
-			exitIP: "",
-			exitLocation: "",
-			latencyMs: 0,
-			quality: gradeOf(0),
-			addedAt: Date.now()
-		};
-		pool.add(node);
-		pool.markOk(node.id);
+		if (parsed && !wanted.has(parsed.id)) wanted.set(parsed.id, parsed);
 	}
-	const pinned = ipPool.pinnedExitId?.trim();
-	if (pinned) {
-		const parsed = parseManualProxy(pinned);
-		if (parsed) {
-			const node = {
-				id: parsed.id,
+	const pinnedRaw = ipPool?.pinnedExitId?.trim() ?? "";
+	const pinned = pinnedRaw === "" ? null : parseManualProxy(pinnedRaw);
+	if (pinned !== null && !wanted.has(pinned.id)) wanted.set(pinned.id, pinned);
+	for (const entry of pool.list()) {
+		if (entry.source !== "manual") continue;
+		if (!wanted.has(entry.id)) pool.remove(entry.id);
+	}
+	for (const [id, parsed] of wanted) {
+		const isPinned = pinned !== null && pinned.id === id;
+		const existing = pool.get(id);
+		if (existing === void 0) {
+			pool.add({
+				id,
 				protocol: parsed.protocol,
 				source: "manual",
-				pinned: true,
+				pinned: isPinned,
 				exitIP: "",
 				exitLocation: "",
 				latencyMs: 0,
 				quality: gradeOf(0),
 				addedAt: Date.now()
-			};
-			pool.add(node);
-			pool.markOk(node.id);
-			pool.pin(node.id);
+			});
+			pool.markOk(id);
+			continue;
 		}
+		if (existing.pinned !== isPinned || existing.protocol !== parsed.protocol) pool.add({
+			...existing,
+			protocol: parsed.protocol,
+			pinned: isPinned
+		});
 	}
-	return pool;
+	if (pinned === null) {
+		if (pool.pinnedId !== "") pool.unpin();
+	} else pool.pin(pinned.id);
 }
 /**
 * Assemble the routing stack. Returns null (with a logged reason) when the
@@ -1709,7 +1754,7 @@ async function startIpPool(config, logger) {
 		logger.warn(`dsh-opencode-free: undici unavailable; exit routing disabled (${err instanceof Error ? err.message : String(err)})`);
 		return null;
 	}
-	const { RoutingInstaller } = await import("./installer-DLrr6hWg.js");
+	const { RoutingInstaller } = await import("./installer-BQBN6LVJ.js");
 	const installer = new RoutingInstaller({
 		pool,
 		undici,
@@ -1755,6 +1800,7 @@ async function startIpPool(config, logger) {
 	/** Apply the config to the live objects (initial start + reconfigure). */
 	const applyConfig = () => {
 		const current = config.ipPool ?? {};
+		syncManualExits(pool, current);
 		pool.setTargetSize(current.free?.targetSize ?? 20);
 		admissionDeps.blockedCountries = current.free?.blockedCountries;
 		admissionDeps.smokeModel = probeModels[0];
@@ -1800,23 +1846,23 @@ async function startIpPool(config, logger) {
 	applyConfig();
 	const probeAll = async () => {
 		const models = probeModels.length > 0 ? probeModels : ["big-pickle"];
-		const { admitCandidate: admitCandidate$1, admitTrusted: admitTrusted$1 } = await import("./admission-DsCkHQBi.js");
+		const { admitCandidate: admitCandidate$1, admitTrusted: admitTrusted$1 } = await import("./admission-C4sgUC2L.js");
 		const tasks = pool.list().map((entry) => ({
 			exitId: entry.id,
 			kind: "probe-all",
 			run: async () => {
 				for (const model of models) {
-					admissionDeps.smokeModel = model;
 					const verdict = entry.source === "free" ? await admitCandidate$1(admissionDeps, {
 						address: entry.id,
 						protocol: entry.protocol,
 						source: "free"
-					}) : await admitTrusted$1(admissionDeps, {
+					}, { smokeModel: model }) : await admitTrusted$1(admissionDeps, {
 						address: entry.id,
 						protocol: entry.protocol,
 						source: entry.source === "manual" ? "manual" : "subscription"
 					}, {
 						pinned: entry.pinned,
+						smokeModel: model,
 						previous: {
 							exitIP: entry.exitIP,
 							exitLocation: entry.exitLocation,
@@ -1831,6 +1877,7 @@ async function startIpPool(config, logger) {
 							pinned: entry.pinned
 						});
 						if (verdict.limited) pool.markLimited(entry.id);
+						else if (verdict.degraded) pool.markDeadStrike(entry.id);
 						else pool.markOk(entry.id, model);
 					} else {
 						pool.markDeadStrike(entry.id);
@@ -1848,19 +1895,19 @@ async function startIpPool(config, logger) {
 		kind: "probe-exit",
 		run: async () => {
 			const models = probeModels.length > 0 ? [...probeModels] : ["big-pickle"];
-			const { admitCandidate: admitCandidate$1, admitTrusted: admitTrusted$1 } = await import("./admission-DsCkHQBi.js");
+			const { admitCandidate: admitCandidate$1, admitTrusted: admitTrusted$1 } = await import("./admission-C4sgUC2L.js");
 			for (const model of models) {
-				admissionDeps.smokeModel = model;
 				const verdict = entry.source === "free" ? await admitCandidate$1(admissionDeps, {
 					address: entry.id,
 					protocol: entry.protocol,
 					source: "free"
-				}) : await admitTrusted$1(admissionDeps, {
+				}, { smokeModel: model }) : await admitTrusted$1(admissionDeps, {
 					address: entry.id,
 					protocol: entry.protocol,
 					source: entry.source === "manual" ? "manual" : "subscription"
 				}, {
 					pinned: entry.pinned,
+					smokeModel: model,
 					previous: {
 						exitIP: entry.exitIP,
 						exitLocation: entry.exitLocation,
@@ -1875,6 +1922,7 @@ async function startIpPool(config, logger) {
 						pinned: entry.pinned
 					});
 					if (verdict.limited) pool.markLimited(entry.id);
+					else if (verdict.degraded) pool.markDeadStrike(entry.id);
 					else pool.markOk(entry.id, model);
 				} else {
 					pool.markDeadStrike(entry.id);
@@ -1917,7 +1965,7 @@ async function startIpPool(config, logger) {
 		probeAll,
 		probeExit,
 		async refillNow() {
-			if (refill !== null) await refill.tick();
+			return refill !== null ? refill.tick() : false;
 		},
 		async refreshSubscriptions() {
 			await subscriptions?.refreshNow();
@@ -1932,4 +1980,4 @@ async function startIpPool(config, logger) {
 }
 
 //#endregion
-export { buildPoolFromConfig, parseManualProxy, startIpPool };
+export { buildPoolFromConfig, parseManualProxy, startIpPool, syncManualExits };

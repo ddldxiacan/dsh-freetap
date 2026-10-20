@@ -283,8 +283,29 @@ export async function toPiContext(options: HarnessGenerateOptions): Promise<PiCo
   const providerId = options.provider
   const toolNames = new Map<string, string>()
   const messages: PiMessage[] = []
-  for (const message of options.messages) {
+  // The system prompt reaches an adapter as the leading run of `role: 'system'`
+  // messages: DSH's agent loop builds requests from the session surface
+  // (`createSystemMessage(rendered)` -> `buildRequest`, which spreads
+  // `header.config` and never sets a `system` field). Emitting those as user
+  // turns — which this did — sent the whole prompt (tool policy, safety rules)
+  // as user input, which models weight far below a system message, and left
+  // `context.systemPrompt` undefined so pi-ai emitted no system message at all.
+  // When a caller DID also pass `options.system` the prompt was sent twice
+  // (once in the system slot, once as a user turn). Fold both into the system
+  // slot, exactly like dsh-llm-pi-ai's splitSystemPrompt.
+  const systemTexts: string[] = []
+  if (typeof options.system === 'string' && options.system.length > 0) systemTexts.push(options.system)
+  let index = 0
+  while (index < options.messages.length && options.messages[index]?.role === 'system') {
+    const text = flattenText(options.messages[index]!)
+    if (text.length > 0) systemTexts.push(text)
+    index += 1
+  }
+  for (const message of options.messages.slice(index)) {
     if (message.role === 'system') {
+      // A system message AFTER the leading run (a mid-conversation policy
+      // update) still cannot occupy the system slot — pi-ai takes one prompt.
+      // Keep it as user text so its content is not lost.
       const text = flattenText(message)
       if (text.length > 0) messages.push({ role: 'user', content: text, timestamp: 0 })
       continue
@@ -325,7 +346,10 @@ export async function toPiContext(options: HarnessGenerateOptions): Promise<PiCo
     }
   }
   const context: PiContext = { messages }
-  if (typeof options.system === 'string' && options.system.length > 0) context.systemPrompt = options.system
+  // De-duplicate exact repeats: a host that sets both `options.system` and an
+  // identical leading system message must not produce the prompt twice.
+  const systemPrompt = [...new Set(systemTexts.filter((text) => text.length > 0))].join('\n\n')
+  if (systemPrompt.length > 0) context.systemPrompt = systemPrompt
   const tools = options.tools?.map((tool) => ({ name: tool.name, description: tool.description, parameters: tool.parameters }))
   if (tools && tools.length > 0) context.tools = tools
   return context

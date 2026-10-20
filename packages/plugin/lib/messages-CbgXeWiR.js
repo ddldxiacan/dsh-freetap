@@ -197,7 +197,15 @@ async function toPiContext(options) {
 	const providerId = options.provider;
 	const toolNames = /* @__PURE__ */ new Map();
 	const messages = [];
-	for (const message of options.messages) {
+	const systemTexts = [];
+	if (typeof options.system === "string" && options.system.length > 0) systemTexts.push(options.system);
+	let index = 0;
+	while (index < options.messages.length && options.messages[index]?.role === "system") {
+		const text = flattenText(options.messages[index]);
+		if (text.length > 0) systemTexts.push(text);
+		index += 1;
+	}
+	for (const message of options.messages.slice(index)) {
 		if (message.role === "system") {
 			const text = flattenText(message);
 			if (text.length > 0) messages.push({
@@ -237,7 +245,8 @@ async function toPiContext(options) {
 		for (const result of results) await pushToolResult(messages, toolNames, result.toolCallId, result.content, result.isError ?? false);
 	}
 	const context = { messages };
-	if (typeof options.system === "string" && options.system.length > 0) context.systemPrompt = options.system;
+	const systemPrompt = [...new Set(systemTexts.filter((text) => text.length > 0))].join("\n\n");
+	if (systemPrompt.length > 0) context.systemPrompt = systemPrompt;
 	const tools = options.tools?.map((tool) => ({
 		name: tool.name,
 		description: tool.description,

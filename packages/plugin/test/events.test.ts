@@ -166,6 +166,29 @@ test('silent context overflow is surfaced as CONTEXT_WINDOW_EXCEEDED', async () 
   assert.equal(failureOf(expectFinish(chunks[1])).code, 'CONTEXT_WINDOW_EXCEEDED')
 })
 
+test('context overflow counts cache reads, so a cached long conversation still trips it', async () => {
+  // `usage.input` is uncached input only. A 300k history of which 290k is a
+  // cache read reports input≈10k, which the old check compared against the
+  // window directly — so a genuinely overflowing turn finished as a clean
+  // `stop` and the host never compacted.
+  const chunks = await collect([
+    event({ usage: { input: 10_000, output: 64, cacheRead: CONTEXT_WINDOW - 1, cacheWrite: 0, totalTokens: CONTEXT_WINDOW } }),
+  ])
+  assert.equal(failureOf(expectFinish(chunks[1])).code, 'CONTEXT_WINDOW_EXCEEDED')
+})
+
+test('a length stop with zero output and a full window is a context overflow', async () => {
+  // Providers that clamp oversized input into the window and then have no room
+  // left to generate report `length` with output 0 (pi-ai overflow.js case 3).
+  const chunks = await collect([
+    event({
+      stopReason: 'length',
+      usage: { input: 200_000, output: 0, cacheRead: Math.floor(CONTEXT_WINDOW * 0.8), cacheWrite: 0, totalTokens: CONTEXT_WINDOW },
+    }),
+  ])
+  assert.equal(failureOf(expectFinish(chunks[1])).code, 'CONTEXT_WINDOW_EXCEEDED')
+})
+
 test('a stream that ends without done/error is a bug and throws', async () => {
   await assert.rejects(collect([{ type: 'start', partial: { content: [] } }]), /without done\/error/)
 })

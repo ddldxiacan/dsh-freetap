@@ -176,7 +176,18 @@ export interface AdmissionResult {
    * periodic probe retries when the cooldown expires.
    */
   limited?: boolean
+  /**
+   * The node was kept although its smoke FAILED (trusted sources, docs 4.5).
+   * Callers must NOT treat this as a healthy admission: the exit stays in the
+   * table but is reported unknown/dead and cooled by the probe layer, instead
+   * of being `markOk()`ed with fabricated ideal facts.
+   */
+  degraded?: boolean
 }
+
+/** Latency stand-in for a trusted exit that was never measured successfully:
+ *  sorts last in `pick()`'s ascending-latency comparison instead of first. */
+export const UNMEASURED_LATENCY_MS = Number.MAX_SAFE_INTEGER
 
 export async function admitCandidate(
   deps: AdmissionDeps,
@@ -187,11 +198,21 @@ export async function admitCandidate(
     timeoutMs?: number
     /** Pre-screened echo facts (coarseScreen output): skips steps 1-2. */
     echoFacts?: EchoFacts
+    /**
+     * Model for THIS probe's smoke step. Per-call on purpose: the probe
+     * workers run concurrently (Prober's maxConcurrentProbes), so a shared
+     * `deps.smokeModel` mutated before each iteration was clobbered by any
+     * other in-flight worker between the assignment and the call — the smoke
+     * request and the (exit, model) ban/health bookkeeping then named
+     * different models, banning a healthy exit for a model it actually
+     * serves. Falls back to `deps.smokeModel` (refill's single-model default).
+     */
+    smokeModel?: string
   } = {},
 ): Promise<AdmissionResult> {
   const zenBase = deps.zenBaseUrl ?? ZEN_BASE_URL
   const timeout = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
-  const smokeModel = deps.smokeModel ?? 'big-pickle'
+  const smokeModel = options.smokeModel ?? deps.smokeModel ?? 'big-pickle'
   // Live-observed 2026-09-09: zen now REJECTS anonymous-lane chat without
   // the CLI session headers (400 MissingSessionID "can only be used in
   // OpenCode") — the smoke request must carry the same disguise set the
@@ -321,20 +342,36 @@ export async function admitCandidate(
 /** Admit a trusted-source candidate (manual/subscription/goproxy): smoke
  *  only; failure warns instead of rejecting for pinned (docs 4.5). Existing
  *  pool facts are PRESERVED on the failure fallback — a failed smoke wipes
- *  neither a previously measured exitIP/latency nor the routing key. */
+ *  neither a previously measured exitIP/latency nor the routing key.
+ *
+ * A failed smoke still returns `admitted: true` (the user's line stays in the
+ * table rather than vanishing), but it now ALSO reports `degraded: true` plus
+ * the reason, and it no longer fabricates healthy facts. That distinction was
+ * missing and it cost real routing quality: callers treated the fallback as a
+ * success and called `markOk()`, and `latencyMs: 0` graded the node 'S', so a
+ * dead subscription/manual exit was both reported healthy in the settings card
+ * and sorted first by `pick()` above every genuinely measured exit. The
+ * fallback now keeps the node `unknown` (callers mark it dead) and sorts last
+ * via Grade 'C' with a sentinel latency when nothing was ever measured. */
 export async function admitTrusted(
   deps: AdmissionDeps,
   candidate: { address: string; protocol: 'http' | 'socks5'; source: 'manual' | 'subscription' | 'goproxy' },
-  options: { pinned?: boolean; previous?: { exitIP: string; exitLocation: string; latencyMs: number; quality?: ExitNode['quality'] } } = {},
+  options: { pinned?: boolean; smokeModel?: string; previous?: { exitIP: string; exitLocation: string; latencyMs: number; quality?: ExitNode['quality'] } } = {},
 ): Promise<AdmissionResult> {
-  const result = await admitCandidate(deps, candidate, { pinned: options.pinned })
+  const result = await admitCandidate(deps, candidate, {
+    pinned: options.pinned,
+    ...(options.smokeModel !== undefined ? { smokeModel: options.smokeModel } : {}),
+  })
   if (result.admitted) return result
   // Trusted candidates: keep the node (the address is the routing key
   // fallback, 3.1), warn, and let periodic probing revisit.
   deps.logger?.warn(`dsh-opencode-free: trusted exit ${candidate.address} failed admission (${result.reason}); admitted with ${options.previous?.exitIP ? 'previous' : 'unknown'} exit facts`)
   const previous = options.previous
+  const measured = previous !== undefined && previous.latencyMs > 0
   return {
     admitted: true,
+    degraded: true,
+    reason: result.reason,
     node: {
       id: candidate.address,
       protocol: candidate.protocol,
@@ -342,8 +379,10 @@ export async function admitTrusted(
       pinned: options.pinned ?? false,
       exitIP: previous?.exitIP ?? '',
       exitLocation: previous?.exitLocation ?? '',
-      latencyMs: previous?.latencyMs ?? 0,
-      quality: previous?.quality ?? gradeOf(previous?.latencyMs ?? 0),
+      // Never claim a latency we did not measure: 0 means "instant" to
+      // gradeOf and to pick()'s ascending latency sort.
+      latencyMs: measured ? previous.latencyMs : UNMEASURED_LATENCY_MS,
+      quality: measured ? (previous.quality ?? gradeOf(previous.latencyMs)) : 'C',
       addedAt: Date.now(),
     },
   }
