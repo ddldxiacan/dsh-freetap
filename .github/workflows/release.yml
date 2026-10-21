@@ -143,7 +143,14 @@ jobs:
       # NPM_TOKEN secret with publish rights. Absent is normal, so this step
       # reports and skips instead of failing the release — the release tarball
       # and the git install already work without a registry.
+      #
+      # A token must be a Granular Access Token with "Bypass 2FA" enabled:
+      # since npm tightened publishing, a classic/2FA-bound token is refused
+      # with a bare 403 on PUT. That refusal is reported as an error here
+      # rather than swallowed, because silently not publishing is exactly the
+      # failure mode this job exists to prevent.
       - name: Publish to npm
+        id: npm
         working-directory: packages/plugin
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -154,5 +161,20 @@ jobs:
             exit 0
           fi
           printf '//registry.npmjs.org/:_authToken=%s\n' "${NODE_AUTH_TOKEN}" > .npmrc
-          npm publish --access public
+          set +e
+          OUT="$(npm publish --access public 2>&1)"
+          STATUS=$?
           rm -f .npmrc
+          set -e
+          printf '%s\n' "$OUT"
+          if [ $STATUS -eq 0 ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          elif printf '%s' "$OUT" | grep -qE 'cannot publish over the previously published version|EPUBLISHCONFLICT'; then
+            # Re-running a release, or the version was already pushed by hand.
+            # Not a failure: the registry already carries this version.
+            echo "::notice::version already on the registry; nothing to publish."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::npm publish failed (exit $STATUS). If this is a 403 mentioning 2FA, the NPM_TOKEN secret needs a Granular Access Token with Bypass 2FA."
+            exit $STATUS
+          fi
