@@ -1,6 +1,6 @@
 {
   "name": "dsh-freetap",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "description": "Free OpenCode Zen models for DeepSeek Harness (DSH): dsh-freetap is a native dsh-llm adapter plugin that needs no API key.",
   "type": "module",
