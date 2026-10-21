@@ -1,6 +1,6 @@
 {
   "name": "dsh-freetap",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Free OpenCode Zen models for DeepSeek Harness (DSH): dsh-freetap is a native dsh-llm adapter plugin that needs no API key.",
   "type": "module",
   "main": "lib/index.js",
@@ -45,7 +45,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts --format esm --dts --out-dir lib --no-clean",
+    "build": "tsdown -c tsdown.config.ts",
     "prepack": "node -e \"require('fs').rmSync('lib',{recursive:true,force:true})\" && npm run build && npm run build:client && node ../../scripts/prepare-package.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/*.test.ts\"",
@@ -71,7 +71,7 @@
   "license": "MIT",
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.4",
-    "@earendil-works/pi-ai": "^0.82.1",
+    "partial-json": "^0.1.7",
     "undici": "^8.10.1",
     "yaml": "^2.9.0"
   },
@@ -99,6 +99,7 @@
     "lightningcss": "1.32.0",
     "react": "^18.3.1",
     "tsdown": "^0.15.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "@earendil-works/pi-ai": "^0.82.1"
   }
 }

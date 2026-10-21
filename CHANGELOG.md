@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.5.1
+
+### Changed
+
+- **The install needs no extra flags any more.** `dsh plugin add <tarball>` now
+  succeeds on a clean machine under pnpm's default strict build policy, and the
+  Web UI's Install dialog no longer stops at an "install scripts need
+  permission" panel.
+
+  Root cause: the package depended on the whole `@earendil-works/pi-ai`
+  provider matrix at runtime, and two of its transitive dependencies
+  (`@google/genai`, `protobufjs`) declare install scripts. pnpm blocks those by
+  default and turns the block into a hard failure:
+
+  ```
+  Error: ERR_PNPM_IGNORED_BUILDS
+    × adding a new package
+    ╰─▶ Ignored build scripts: @google/genai@1.52.0, protobufjs@7.6.6
+  ```
+
+  The trap was what happened next: pnpm had **already written the dependency**
+  into the profile's `package.json`, but DSH only registers a package as a
+  profile *bundle* when the run exits 0. So the plugin sat installed in
+  `node_modules`, never loaded, and the model picker stayed empty with nothing
+  in the output explaining why.
+
+  Fixed at the source instead of in the instructions: the wire layer is now
+  **bundled into the shipped `lib/`** (`tsdown.config.ts`, `noExternal`), so
+  those packages are not installed at all. `@earendil-works/pi-ai` moved to
+  `devDependencies`; it is a build input, not a runtime dependency.
+
+### Fixed
+
+- **Install footprint dropped from ~99 packages to 7.** The published package
+  now depends only on `yaml`, `undici`, `partial-json` and
+  `@deepseek-ai/schemastery` — none of which run install scripts. `partial-json`
+  is declared explicitly, because it used to arrive as a `pi-ai` transitive
+  dependency and is still imported at runtime.
+
+  Verified end to end on a clean `HOME` with an empty pnpm store: bare
+  `dsh plugin --profile web add <tarball>` → exit 0, plugin registered under
+  `dsh.profile.bundles`, DSH boots and the provider reports 86 models / 9
+  exposed / no error. Full suite still 316/316.
+
 ## 0.5.0
 
 First release under the name **dsh-freetap**. The project is published fresh

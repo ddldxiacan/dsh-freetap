@@ -43,21 +43,27 @@ nothing to host.
 Installs from a prebuilt release, so no build step and no toolchain is needed.
 
 ```sh
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz --config.strict-dep-builds=false
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.1/dsh-freetap-0.5.1.tgz
 ```
 
-That is the whole install — one command, exit code 0. Then **restart DSH** and
-pick a model from the **dsh-freetap** group in the model selector.
+That is the whole install — one command, no extra flags, exit code 0. Then
+**restart DSH** and pick a model from the **dsh-freetap** group in the model
+selector.
 
 Requirements: DSH (DeepSeek Harness) 0.1.7 or newer with a web profile, Node.js
 ≥ 20 (already present if DSH runs), and outbound HTTPS to `opencode.ai` and
 `models.dev`.
 
-### What that flag is for
+The install pulls **seven** small packages and runs **no** dependency build
+scripts, so it succeeds on a clean machine with pnpm's default (strict) build
+policy. That is a deliberate property of this package — see
+[Why the install needs no flags](#why-the-install-needs-no-flags).
 
-`@earendil-works/pi-ai` transitively pulls in `@google/genai` and `protobufjs`,
-which ship build scripts. pnpm blocks dependency build scripts by default, and
-in strict mode that disagreement is a hard failure:
+### Why the install needs no flags
+
+Earlier builds depended on the full `@earendil-works/pi-ai` provider matrix at
+runtime. Two of its transitive dependencies declare install scripts, which pnpm
+blocks by default, and pnpm turns that into a hard failure:
 
 ```
 Error: ERR_PNPM_IGNORED_BUILDS
@@ -65,72 +71,39 @@ Error: ERR_PNPM_IGNORED_BUILDS
   ╰─▶ Ignored build scripts: @google/genai@1.52.0, protobufjs@7.6.6
 ```
 
-Those scripts are not needed at runtime (upstream ships both as `false`), so
-`--config.strict-dep-builds=false` tells that single pnpm run to report the
-skip as a warning and carry on. Verified: exit 0, no script executed, plugin
-registered as a bundle.
+Worse than a plain failure: pnpm had **already written the dependency** into the
+profile's `package.json`, and DSH registers a package as a profile *bundle* only
+when the run exits 0. So the plugin ended up installed but never loaded — no
+model in the picker, nothing in the output explaining it.
 
-Equivalents, if you prefer to be explicit rather than relax the check for one
-run — both also work and record `allowBuilds: {'@google/genai': false,
-protobufjs: false}` in the profile:
+The fix is at the source rather than in the instructions: the wire layer is
+**bundled into the shipped `lib/`**, so none of those packages are installed at
+all. Today's published package depends only on `yaml`, `undici`,
+`partial-json` and `@deepseek-ai/schemastery` — none of which run scripts.
 
-```sh
-# deny the two scripts explicitly
-dsh plugin --profile web add <same-url> --allow-build='!@google/genai' --allow-build='!protobufjs'
-```
-
-### ⚠ If you installed the bare `add` URL and hit that error
-
-Do not simply retry — first remove. This is worse than it looks: pnpm has
-**already written the dependency** into the profile's `package.json` when it
-errors, and DSH registers a package as a profile *bundle* only when the run
-exits 0 **and** the package counts as new. A plain retry therefore prints
-`Already up to date` and exits **0** while `dsh.profile.bundles` never gains the
-plugin — it sits in `node_modules`, never loads, and no model appears. Nothing
-in the output says so.
-
-Recover with an explicit remove + add:
-
-```sh
-dsh plugin --profile web remove dsh-freetap
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz --config.strict-dep-builds=false
-```
-
-**Verify** it really registered: `dsh-freetap` must appear
-under `dsh.profile.bundles` in the profile's `package.json`, not only under
-`dependencies`.
+Verify it registered: `dsh-freetap` must appear under `dsh.profile.bundles` in
+the profile's `package.json`, not only under `dependencies`.
 
 ### Installing in the Web UI (recommended if you never use a terminal)
 
 **Settings → Plugins → Install**, then paste the tarball URL:
 
 ```
-https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz
+https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.1/dsh-freetap-0.5.1.tgz
 ```
 
-The first attempt **always fails once**. That is by design, not a bug:
+It installs in one pass. No approval dialog appears, because the package no
+longer depends on anything that declares an install script.
 
-1. The dialog reports the failure and shows an **"Install scripts need
-   permission"** section listing `@google/genai` and `protobufjs`;
-2. Click **"Allow these scripts and retry"**;
-3. The second run succeeds and asks you to restart.
-
-This path does **not** hit the silent-retry trap described below: after every
-failed run the page restores `package.json` and `pnpm-lock.yaml`, so the retry
-still counts as a new dependency and registers as a profile bundle. Verified
-end to end on a real profile: fail → allow → retry succeeded, and
-`dsh.profile.bundles` gained `dsh-freetap` at 0.5.0.
-
-If you close that dialog and use the Install button again later, it fails again
-and re-opens the same approval section — it will not pretend to have succeeded.
-Click "Allow these scripts and retry" and it goes through.
+If you ever *do* see an "Install scripts need permission" panel, you are on a
+build older than 0.5.1 — upgrade, or click **Allow these scripts and retry**.
 
 ### Other ways to install
 
 **From GitHub directly** (no registry involved):
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-freetap --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap
 ```
 
 This works because the repository root *is* the installable plugin: it carries
@@ -140,7 +113,7 @@ scripts for git dependencies — so shipping the build is what makes this path
 work. Pinning a tag is recommended for stability:
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-freetap#v0.5.0 --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap#v0.5.1
 ```
 
 **From npm** (once the package is published):
@@ -159,8 +132,8 @@ Pick the source you installed from; each updates in place.
 **Release tarball.** Use the tag-scoped asset, not the version-free one:
 
 ```sh
-# replace 0.5.0 with the release you are moving to
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz
+# replace 0.5.1 with the release you are moving to
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.1/dsh-freetap-0.5.1.tgz
 ```
 
 The version-free `releases/latest/download/...` URL does **not** update an
@@ -180,7 +153,7 @@ dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/
 **git install**: follow master (a git spec re-resolves each time):
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-freetap --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap
 ```
 
 **npm install**:
@@ -284,7 +257,7 @@ The plugin writes a health snapshot after every refresh round:
 | Output limit reached after reasoning with no answer | Plugin 0.3.6 retries once with thinking Off when the model supports it. Any answer text or tool-call event prevents replay. The retry preserves the original output cap and may still fail; both requests' usage is counted. Models without Off, including Muse, require a manual change of settings or model. |
 | Muse reports `REGION_BLOCKED` / "This model is not available in your country" | Zen has rejected the current network region for this model. Plugin 0.3.5 preserves that explanation; older versions mislabeled the same 403 as an invalid API key. The anonymous lane does not need a personal key. Use a model available in your region. |
 | Connection error to `127.0.0.1:*` | A stale sidecar route shadows the adapter; plugin ≥ 0.2.1 removes it at startup. |
-| Install fails with `ERR_PNPM_IGNORED_BUILDS` | A transitive dependency of `pi-ai` (`@google/genai`, `protobufjs`) has build scripts that are not needed at runtime. Add `--config.strict-dep-builds=false` to the install command, or click **Allow these scripts and retry** in the Web UI. Do not simply re-run a failed bare `add` — see [Install](#install). |
+| Install fails with `ERR_PNPM_IGNORED_BUILDS` | You are on a build older than 0.5.1, whose `pi-ai` dependency dragged in `@google/genai` and `protobufjs` (both ship install scripts). Upgrade to 0.5.1+, which bundles that layer and depends only on script-free packages. If you must stay on the old build, pass `--config.strict-dep-builds=false`. |
 
 ## Security
 

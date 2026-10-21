@@ -42,18 +42,21 @@ OpenCode 官方 CLI 无需登录即可使用的那批免费模型，它们会以
 从预构建的 Release 安装，无需构建步骤，也不需要工具链。
 
 ```sh
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz --config.strict-dep-builds=false
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.1/dsh-freetap-0.5.1.tgz
 ```
 
-就这一条，退出码 0。然后**重启 DSH**，在模型选择器的 **dsh-freetap** 分组里挑模型即可。
+就这一条，不用加任何参数，退出码 0。然后**重启 DSH**，在模型选择器的 **dsh-freetap** 分组里挑模型即可。
 
 环境要求：DSH（DeepSeek Harness）0.1.7 及以上、带 web profile；Node.js ≥ 20（DSH 能跑就满足）；
 出站 HTTPS 需可达 `opencode.ai` 与 `models.dev`。
 
-### 那个参数是干什么的
+整个安装只装 **7 个**小包，且**不执行任何依赖的构建脚本**，所以在全新机器上、pnpm 默认（严格）
+策略下就能直接装成功。这是本包刻意保证的性质，原因见下一节。
 
-`@earendil-works/pi-ai` 传递引入了 `@google/genai` 和 `protobufjs`，这两个包自带构建脚本。
-pnpm 默认拦截依赖的构建脚本，严格模式下这种分歧直接算失败：
+### 为什么安装不需要任何参数
+
+更早的版本在运行时依赖完整的 `@earendil-works/pi-ai` 供应商矩阵，其中两个传递依赖自带安装脚本，
+pnpm 默认拦截，并把它升级成硬失败：
 
 ```
 Error: ERR_PNPM_IGNORED_BUILDS
@@ -61,30 +64,13 @@ Error: ERR_PNPM_IGNORED_BUILDS
   ╰─▶ Ignored build scripts: @google/genai@1.52.0, protobufjs@7.6.6
 ```
 
-这两个脚本运行时并不需要（上游也是把它们设为 `false`），所以
-`--config.strict-dep-builds=false` 只是让这一次 pnpm 运行把「跳过」当警告继续，而不是中断。
-实测：退出码 0、没有任何脚本被执行、插件正常注册成 bundle。
+更麻烦的是：pnpm 报错时**已经把依赖写进** profile 的 `package.json` 了，而 DSH 只在 pnpm
+退出码为 0 时才把包注册成 profile *bundle*。结果插件装上了却从不加载——模型选择器空白，
+输出里也没有任何解释。
 
-如果你更想显式地表态、而不是放宽这一次检查，下面这条等价命令也可以，它会把
-`allowBuilds: {'@google/genai': false, protobufjs: false}` 写进 profile：
-
-```sh
-dsh plugin --profile web add <同一个地址> --allow-build='!@google/genai' --allow-build='!protobufjs'
-```
-
-### ⚠ 如果你直接用裸 `add` 撞上了那个报错
-
-别直接重试，先移除。这个失败比看起来更麻烦：pnpm 报错时**已经把依赖写进** profile 的
-`package.json` 了，而 DSH 只在 pnpm 退出码为 0 **且该包算作新依赖**时，才把它注册成 bundle。
-所以直接重试会输出 `Already up to date` 并以 **0** 退出——但 `dsh.profile.bundles` 里始终没有它。
-插件躺在 `node_modules` 里，永远不加载，模型选择器里什么也没有，而输出里没有任何提示。
-
-用显式的先移除、再安装恢复：
-
-```sh
-dsh plugin --profile web remove dsh-freetap
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz --config.strict-dep-builds=false
-```
+现在从源头解决，而不是让用户照着一长串说明去绕：这层线协议代码**已随包的 `lib/` 一起打包**，
+那些依赖根本不会被安装。当前发布包只依赖 `yaml`、`undici`、`partial-json` 和
+`@deepseek-ai/schemastery`，它们都不执行脚本。
 
 **确认真的注册上了**：profile 的 `package.json` 里，`dsh-freetap` 必须出现在
 `dsh.profile.bundles` 下，而不只是 `dependencies` 里。
@@ -94,29 +80,19 @@ dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/
 **设置 → 插件 → 安装**，把 tarball 链接粘进去：
 
 ```
-https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz
+https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.1/dsh-freetap-0.5.1.tgz
 ```
 
-第一次安装**一定会先失败一次**，这是设计好的，不是出错：
+一次就能装好，不会弹「需要允许安装脚本」——包里已经没有任何声明安装脚本的依赖。
 
-1. 弹窗报错，下方出现一个「**需要允许安装脚本**」区域，列出 `@google/genai` 和 `protobufjs`；
-2. 点「**允许这些脚本并重试**」；
-3. 第二次成功，提示重启。
-
-这条路径**不会**踩到下面命令行那个「重试变成静默失败」的坑：界面在每次失败后会把
-`package.json` 和 `pnpm-lock.yaml` 还原，所以重试仍然算作「新依赖」，能够正常注册成 bundle。
-我在真实 profile 上完整复现过：先失败 → 允许 → 重试成功 → `dsh.profile.bundles` 里出现
-`dsh-freetap`，版本 0.5.0。
-
-如果你**关掉了**那个弹窗、稍后又在界面上点了一次安装：它依然会再次失败并重新弹出授权区域
-（不会假装成功），照上面点「允许并重试」即可。
+万一你确实看到那个授权面板，说明你装的是 0.5.1 之前的旧构建：升级即可，或点「允许这些脚本并重试」。
 
 ### 其他安装方式
 
 **直接从 GitHub 安装**（不经过 registry）：
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-freetap --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap
 ```
 
 这条路径之所以可用，是因为仓库根本身就是那个可安装的插件：它带着 `dsh` 清单，
@@ -125,7 +101,7 @@ git 依赖的 prepare 脚本——所以把构建产物一并提交，才让这�
 需要稳定版本时建议锁定 tag：
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-freetap#v0.5.0 --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap#v0.5.1
 ```
 
 **从 npm 安装**（已发布版本）：
@@ -143,8 +119,8 @@ dsh plugin --profile web add dsh-freetap
 **Release tarball** —— 用带版本号的那个资产，不要用 `latest`：
 
 ```sh
-# 把 0.5.0 换成你要升到的版本
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz
+# 把 0.5.1 换成你要升到的版本
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.1/dsh-freetap-0.5.1.tgz
 ```
 
 不带版本号的 `releases/latest/download/...` 地址**无法**更新已安装的版本：pnpm 早已把该
@@ -162,7 +138,7 @@ dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/
 **git 安装**：跟随 master（git 依赖每次都会重新解析）：
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-freetap --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap
 ```
 
 **npm 安装**：
@@ -261,7 +237,7 @@ https://opencode.ai/zen/v1        ← Authorization: Bearer public
 | 思考耗尽输出预算，没有正文 | 插件 0.3.6 会在模型支持 Off 时关闭思考重试一次。已有任何正文或工具调用则不会重试。重试保持原输出上限，仍可能失败，两次请求的用量合并统计。不支持 Off 的模型（如 Muse）需要手动调整设置或更换模型。 |
 | Muse 报 `REGION_BLOCKED` / "This model is not available in your country" | Zen 不向当前网络地区提供该模型。插件 0.3.5 保留上游解释；旧版会把这个 403 误报为 API 密钥无效。匿名通道不需要个人密钥，可使用当前地区可用的模型。 |
 | 连接 `127.0.0.1:*` 报错 | 残留的 sidecar 路由遮蔽了 adapter；插件 ≥ 0.2.1 启动时会自动清理。 |
-| 安装时报 `ERR_PNPM_IGNORED_BUILDS` | `pi-ai` 的传递依赖（`@google/genai`、`protobufjs`）带构建脚本，运行时并不需要。在安装命令后加 `--config.strict-dep-builds=false`，或在 Web 界面点「允许这些脚本并重试」。别直接重跑失败的裸 `add`——见[安装](#安装)。 |
+| 安装时报 `ERR_PNPM_IGNORED_BUILDS` | 你装的是 0.5.1 之前的旧构建，它依赖的 `pi-ai` 会带入 `@google/genai` 与 `protobufjs`（两者都有安装脚本）。升级到 0.5.1+ 即可——新版已把这层打包进来，只依赖无脚本的包。若必须留在旧版，加 `--config.strict-dep-builds=false`。 |
 
 ## 安全性
 
