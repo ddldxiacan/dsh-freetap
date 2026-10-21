@@ -1,4 +1,4 @@
-// Command agent is the dsh-opencode-free sidecar: a single-tenant anonymous-lane
+// Command agent is the dsh-freetap sidecar: a single-tenant anonymous-lane
 // proxy for OpenCode Zen, ported from opencode2api. main.go is the upstream
 // startup/signal skeleton with WebUI and the multi-instance runtime removed.
 package main
@@ -16,10 +16,10 @@ import (
 	"syscall"
 	"time"
 
-	"dsh-opencode-free/agent/internal/catalog"
-	"dsh-opencode-free/agent/internal/config"
-	"dsh-opencode-free/agent/internal/gateway"
-	"dsh-opencode-free/agent/internal/obs"
+	"dsh-freetap/agent/internal/catalog"
+	"dsh-freetap/agent/internal/config"
+	"dsh-freetap/agent/internal/gateway"
+	"dsh-freetap/agent/internal/obs"
 )
 
 func main() {

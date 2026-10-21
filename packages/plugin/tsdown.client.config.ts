@@ -1,5 +1,5 @@
 /**
- * Standalone tsdown config for the dsh-opencode-free client bundle (docs/ip-pool.md
+ * Standalone tsdown config for the dsh-freetap client bundle (docs/ip-pool.md
  * §5.4) — mirrors dsh-llm-proxy's validated chain, adapted to the platform
  * seeds verified on this host (web-frontend static table): react,
  * react/jsx-runtime, react-dom, react-dom/client, @deepseek-ai/cordis,
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { transform } from 'lightningcss'
 import type { UserConfig } from 'tsdown'
 
-const ID = '@dsh-opencode-free/dsh-plugin'
+const ID = 'dsh-freetap'
 
 /** This package's root; CSS-module hashes are computed from paths relative to it. */
 const PACKAGE_ROOT = dirname(fileURLToPath(import.meta.url))

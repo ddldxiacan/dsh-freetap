@@ -1,3 +1,6 @@
+import { join } from "node:path";
+import { homedir } from "node:os";
+
 //#region src/pool/rotate.ts
 let delegate = null;
 /** Install the runtime's rotate delegate (startIpPool). */
@@ -53,4 +56,11 @@ function normalizeSubscriptionUserAgent(value) {
 }
 
 //#endregion
-export { isRegionBlocked as a, createRotateDelegate as i, normalizeSubscriptionUserAgent as n, setRotateDelegate as o, classifyStreamFailure as r, shouldRotate as s, DEFAULT_SUBSCRIPTION_USER_AGENT as t };
+//#region src/data-dir.ts
+/** Absolute data directory for the current user. */
+function dataDir(home = homedir()) {
+	return join(home, ".dsh-freetap");
+}
+
+//#endregion
+export { createRotateDelegate as a, shouldRotate as c, classifyStreamFailure as i, DEFAULT_SUBSCRIPTION_USER_AGENT as n, isRegionBlocked as o, normalizeSubscriptionUserAgent as r, setRotateDelegate as s, dataDir as t };

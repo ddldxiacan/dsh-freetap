@@ -1,18 +1,17 @@
-# Market submission draft — ddldxiacan/dsh-opencode-free
+# Market submission draft — ddldxiacan/dsh-freetap
 #
 # Repository is PUBLIC, the release asset downloads anonymously (verified
 # 2026-10-19: HTTP 200, 128166 bytes), and the `dsh-plugin` topic is set. The
 # only remaining gate is the registry's 1-day repository-age rule: created
 # 2026-10-19, so submit on or after 2026-10-20.
 #
-# Lineage: this project was renamed from its fork name `opencode2dsh` to
-# `dsh-opencode-free`. The upstream project is FishBottle7/opencode2dsh, which
-# already has a registry entry installing its published npm build. The case for
-# this entry is that it is independently maintained and carries fixes the
-# published upstream build does not.
+# Lineage: this project derives from FishBottle7/opencode2dsh, which already has
+# a registry entry installing its published npm build. The case for this entry is
+# that it is independently maintained and carries fixes the published upstream
+# build does not.
 #
 # Target registry: https://github.com/awesome-dsh-plugin/awesome-dsh-plugin
-# Path to add: data/plugins/ddldxiacan__dsh-opencode-free--packages-plugin.yml
+# Path to add: data/plugins/ddldxiacan__dsh-freetap--packages-plugin.yml
 #   Monorepo form, following contributing.md ("owner/repo#subname", filename
 #   owner__repo--packages-plugin). The url MUST point at the subdirectory: the
 #   repository root is a wrapper whose dependency installs the plugin, so a root
@@ -22,7 +21,7 @@
 # `latest` at request time but takes the filename literally, so a versioned asset
 # name works on submission day and 404s on the next release.
 #
-# The repository root is also directly installable (github:ddldxiacan/dsh-opencode-free)
+# The repository root is also directly installable (github:ddldxiacan/dsh-freetap)
 # because it carries the dsh manifest and the built output is committed under
 # packages/plugin/lib/; a git install cannot run a build, since pnpm blocks
 # prepare scripts for git dependencies (ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED).
@@ -30,10 +29,10 @@
 # The description stays a claim the registry checks against the code — no
 # superlatives, no numbers that are not true of the tree.
 
-url: https://github.com/ddldxiacan/dsh-opencode-free/tree/master/packages/plugin
-name: ddldxiacan/dsh-opencode-free#packages/plugin
+url: https://github.com/ddldxiacan/dsh-freetap/tree/master/packages/plugin
+name: ddldxiacan/dsh-freetap#packages/plugin
 category: model
-tarball: https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
+tarball: https://github.com/ddldxiacan/dsh-freetap/releases/latest/download/dsh-freetap.tgz
 description:
-  en: 'Registers OpenCode Zen free models in DeepSeek Harness with no API key, carrying the free lane on the /inference host, the post-2026-10-15 session-gate header set with real gate-tool schemas, and one replay on the sibling host when the lane refuses. Independently maintained rename of opencode2dsh.'
-  zh: '把 OpenCode Zen 免费模型接入 DeepSeek Harness，无需 API Key。免费通道走 /inference 主机，带 2026-10-15 之后的会话门请求头与真实 gate 工具 schema，被拒时在姊妹主机重放一次。opencode2dsh 的独立维护改名分支。'
+  en: 'Registers OpenCode Zen free models in DeepSeek Harness with no API key, carrying the free lane on the /inference host, the post-2026-10-15 session-gate header set with real gate-tool schemas, and one replay on the sibling host when the lane refuses. Independently maintained fork of opencode2dsh.'
+  zh: '把 OpenCode Zen 免费模型接入 DeepSeek Harness，无需 API Key。免费通道走 /inference 主机，带 2026-10-15 之后的会话门请求头与真实 gate 工具 schema，被拒时在姊妹主机重放一次。opencode2dsh 的独立维护分支。'

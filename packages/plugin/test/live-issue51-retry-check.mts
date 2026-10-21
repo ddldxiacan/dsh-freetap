@@ -49,7 +49,7 @@ async function oneStream(): Promise<AttemptResult> {
   try {
     const stream = await adapter.stream({
       model: MODEL,
-      provider: 'dsh-opencode-free',
+      provider: 'dsh-freetap',
       messages: [{ role: 'user', content: [{ type: 'text', text: 'Reply with exactly: OK' }] }],
       reasoningEffort: 'high',
       temperature: 0,

@@ -1,7 +1,7 @@
 {
-  "name": "@dsh-opencode-free/dsh-plugin",
-  "version": "0.4.3",
-  "description": "Free OpenCode Zen models for DeepSeek Harness (DSH): native dsh-llm adapter plugin, no API key.",
+  "name": "dsh-freetap",
+  "version": "0.5.0",
+  "description": "Free OpenCode Zen models for DeepSeek Harness (DSH): dsh-freetap is a native dsh-llm adapter plugin that needs no API key.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -20,10 +20,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ddldxiacan/dsh-opencode-free.git"
+    "url": "git+https://github.com/ddldxiacan/dsh-freetap.git"
   },
-  "homepage": "https://github.com/ddldxiacan/dsh-opencode-free#readme",
-  "bugs": "https://github.com/ddldxiacan/dsh-opencode-free/issues",
+  "homepage": "https://github.com/ddldxiacan/dsh-freetap#readme",
+  "bugs": "https://github.com/ddldxiacan/dsh-freetap/issues",
   "author": "ddldxiacan (https://github.com/ddldxiacan)",
   "engines": {
     "node": ">=20"

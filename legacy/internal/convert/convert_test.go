@@ -170,7 +170,7 @@ func TestParseChatFinishKinds(t *testing.T) {
 }
 
 func TestNoTranscode(t *testing.T) {
-	if strings.Contains(NoTranscode().Error(), "dsh-opencode-free") == false {
+	if strings.Contains(NoTranscode().Error(), "dsh-freetap") == false {
 		t.Fatal("placeholder error should name the project")
 	}
 }

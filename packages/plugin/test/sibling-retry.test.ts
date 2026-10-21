@@ -5,7 +5,7 @@ import type { HarnessChunk, PiDoneMessage, PiEvent } from '../src/adapter/events
 import type { HarnessGenerateOptions } from '../src/adapter/messages.ts'
 
 const options: HarnessGenerateOptions = {
-  provider: 'dsh-opencode-free',
+  provider: 'dsh-freetap',
   model: 'big-pickle',
   messages: [{ role: 'user', content: [{ type: 'text', text: 'ping' }] }],
   maxTokens: 16,
@@ -14,7 +14,7 @@ const options: HarnessGenerateOptions = {
 function message(overrides: Partial<PiDoneMessage> = {}): PiDoneMessage {
   return {
     api: 'openai-completions',
-    provider: 'dsh-opencode-free',
+    provider: 'dsh-freetap',
     model: options.model,
     content: [],
     stopReason: 'stop',

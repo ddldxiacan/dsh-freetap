@@ -1,5 +1,5 @@
 /**
- * dsh-opencode-free — browser half. Registers the IP 池 page on the Plugins page
+ * dsh-freetap — browser half. Registers the IP 池 page on the Plugins page
  * (设置 → 插件) through the `plugins.item` slot, which
  * @deepseek-ai/dsh-client-ui-plugin-manager owns, while the Host serves this
  * plugin's entry settings.
@@ -9,7 +9,7 @@
  * (`{ state, mutate }`) for the served entry. So this half only
  *  - registers the entry's one-liner and page, and
  *  - registers while the Host serves the namespace, so a deployment that
- *    serves no `dsh-opencode-free` settings shows no trace of the card.
+ *    serves no `dsh-freetap` settings shows no trace of the card.
  *
  * The editable section is the `ipPool` volatile node, so the served form's
  * value is `{ ipPool: ... }` and every write path is `['ipPool', <field>]`.
@@ -49,7 +49,7 @@ export const NS = 'settings.ip-pool'
  * The Host settings entry this page edits: the Loader entry id, which is the
  * plugin name. The editable field inside it is `ipPool`.
  */
-export const SETTINGS_NAMESPACE = 'dsh-opencode-free'
+export const SETTINGS_NAMESPACE = 'dsh-freetap'
 
 /** Where this page sorts among the Plugins page's official entries. */
 const ORDER = 20
@@ -68,7 +68,7 @@ export const inject = ['slots', 'locale']
  */
 export function apply(ctx: ClientContext): void {
   const t = ctx.locale.bind(NS)
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-opencode-free: copy dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-freetap: copy dictionaries')
   const slots = ctx.slots as unknown as {
     inject(name: string, callback: () => () => void): () => void
     spec(name: string): unknown
@@ -82,12 +82,13 @@ export function apply(ctx: ClientContext): void {
       () => {
         // 0.2 mounts configuration inside each installed bundle's row.
         const row = slots.inject('plugins.row.config', () => {
-          const disposers = ['@dsh-opencode-free/dsh-plugin', 'dsh-opencode-free'].map((pkg) => slots.register({
+          // The bundle id is the installed package name. This package publishes
+          // unscoped (`dsh-freetap`), so there is exactly one row key.
+          return slots.register({
             name: 'plugins.row.config',
-            key: `${pkg}#${SETTINGS_NAMESPACE}`,
+            key: `dsh-freetap#${SETTINGS_NAMESPACE}`,
             locale: NS,
-          }, IpPoolCard))
-          return () => { for (const dispose of disposers) dispose() }
+          }, IpPoolCard)
         })
         const legacy = slots.inject('plugins.item', () => {
           if (slots.spec('plugins.row.config') !== undefined) return () => {}
@@ -102,6 +103,6 @@ export function apply(ctx: ClientContext): void {
         return () => { row(); legacy() }
       },
     ),
-    'dsh-opencode-free: settings page',
+    'dsh-freetap: settings page',
   ) })
 }

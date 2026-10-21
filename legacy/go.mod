@@ -1,3 +1,3 @@
-module dsh-opencode-free/agent
+module dsh-freetap/agent
 
 go 1.24

@@ -1,11 +1,10 @@
-import { d as deriveRequestIDs, f as disguiseHeaders, n as ModelCatalog, o as defaultCachePath, r as ZEN_BASE_URL } from "./catalog-CaaY1TXy.js";
-import { c as isResponsesModel, i as ensureResponsesFreeLaneShape, n as GATE_TOOL_ALIASES, o as toPiContext, r as ensureFreeLaneShape, s as apiForModel } from "./messages-CbgXeWiR.js";
-import { r as routingContext } from "./dispatcher-CB_rfVFN.js";
-import { a as isRegionBlocked, n as normalizeSubscriptionUserAgent, r as classifyStreamFailure, s as shouldRotate, t as DEFAULT_SUBSCRIPTION_USER_AGENT } from "./subscription-defaults-DEuRqSU9.js";
-import { homedir } from "node:os";
+import { d as deriveRequestIDs, f as disguiseHeaders, n as ModelCatalog, o as defaultCachePath, r as ZEN_BASE_URL } from "./catalog-LZH3DaGR.js";
+import { c as isResponsesModel, i as ensureResponsesFreeLaneShape, n as GATE_TOOL_ALIASES, o as toPiContext, r as ensureFreeLaneShape, s as apiForModel } from "./messages-CQuuRFeM.js";
+import { r as routingContext } from "./dispatcher-Ct4hg8tS.js";
+import { c as shouldRotate, i as classifyStreamFailure, n as DEFAULT_SUBSCRIPTION_USER_AGENT, o as isRegionBlocked, r as normalizeSubscriptionUserAgent, t as dataDir } from "./data-dir-jQUgAPXb.js";
 import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
-import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { createProvider } from "@earendil-works/pi-ai";
 import * as openaiCompletions from "@earendil-works/pi-ai/api/openai-completions";
@@ -15,7 +14,6 @@ import { createInterface } from "node:readline";
 import { EventEmitter } from "node:events";
 import { platform } from "node:process";
 import Schema from "@deepseek-ai/schemastery";
-import { parse, stringify } from "yaml";
 import { fileURLToPath } from "node:url";
 
 //#region src/adapter/events.ts
@@ -205,13 +203,13 @@ async function* toStreamChunks(events, contextWindow, toolNameAlias) {
 			};
 			return;
 	}
-	throw new Error("dsh-opencode-free: pi-ai event stream ended without done/error");
+	throw new Error("dsh-freetap: pi-ai event stream ended without done/error");
 }
 
 //#endregion
 //#region src/adapter/zen-adapter.ts
 /**
-* The TS adapter: registers as a DSH LlmAdapter for the `dsh-opencode-free` route
+* The TS adapter: registers as a DSH LlmAdapter for the `dsh-freetap` route
 * and streams directly from the OpenCode Zen anonymous lane. The wire layer is
 * pi-ai's openai-completions implementation for most models (the same one DSH
 * uses for every OpenAI-compatible provider), plus pi-ai's openai-responses
@@ -221,7 +219,7 @@ async function* toStreamChunks(events, contextWindow, toolNameAlias) {
 * Adapter contract: dsh-llm LlmAdapter (providerInfo/listModels/resolveModel/
 * prepareCall/stream) — structural, no host import.
 */
-const PROVIDER_ID = "dsh-opencode-free";
+const PROVIDER_ID = "dsh-freetap";
 const DEFAULT_CONTEXT_WINDOW = 262144;
 const DEFAULT_MAX_TOKENS = 32768;
 /** The advertised context window: the models.dev declaration when the
@@ -328,8 +326,8 @@ const FREE_LANE_RETRY_POLICY = Object.freeze({
 * carry "timeout" so classifyStreamFailure maps them to 'transport' and
 * the rotate loop gets to move the session to a live exit.
 */
-const WATCHDOG_FIRST_MESSAGE = "dsh-opencode-free: first stream event timeout (exit silent before any response)";
-const WATCHDOG_IDLE_MESSAGE = "dsh-opencode-free: stream body idle timeout (exit went silent mid-response)";
+const WATCHDOG_FIRST_MESSAGE = "dsh-freetap: first stream event timeout (exit silent before any response)";
+const WATCHDOG_IDLE_MESSAGE = "dsh-freetap: stream body idle timeout (exit went silent mid-response)";
 /** Default watchdog windows (docs/ip-pool.md; test-injectable via constructor). */
 const DEFAULT_FIRST_EVENT_MS = 3e4;
 const DEFAULT_BODY_IDLE_MS = 12e4;
@@ -769,11 +767,11 @@ var ZenAdapter = class {
 				for (let i = 0; i < buffered.length; i += 1) {
 					const e = buffered[i];
 					if (e.type === "error" && e.error) {
-						e.error.errorMessage = rotateStory.length > 1 ? `${e.error.errorMessage} (dsh-opencode-free 轮换 ${rotateStory.length - 1} 次后放弃: ${rotateStory.join(" -> ")})` : e.error.errorMessage;
+						e.error.errorMessage = rotateStory.length > 1 ? `${e.error.errorMessage} (dsh-freetap 轮换 ${rotateStory.length - 1} 次后放弃: ${rotateStory.join(" -> ")})` : e.error.errorMessage;
 						break;
 					}
 					if (e.type === "done" && e.message?.stopReason === "error") {
-						e.message.errorMessage = rotateStory.length > 1 ? `${e.message.errorMessage} (dsh-opencode-free 轮换 ${rotateStory.length - 1} 次后放弃: ${rotateStory.join(" -> ")})` : e.message.errorMessage;
+						e.message.errorMessage = rotateStory.length > 1 ? `${e.message.errorMessage} (dsh-freetap 轮换 ${rotateStory.length - 1} 次后放弃: ${rotateStory.join(" -> ")})` : e.message.errorMessage;
 						break;
 					}
 				}
@@ -1069,7 +1067,7 @@ function resolveSubscriptionUrls(section) {
 * Settings namespace owned by this plugin: the Loader entry id declared by
 * `cordis.patch.yml`. Mirrored by `SETTINGS_NAMESPACE` in src/client/index.ts.
 */
-const IP_POOL_NAMESPACE = "dsh-opencode-free";
+const IP_POOL_NAMESPACE = "dsh-freetap";
 /** True when a value is one of the Loader's stable volatile references. */
 function isVolatileRef(value) {
 	return typeof value === "object" && value !== null && typeof value.get === "function";
@@ -1176,8 +1174,8 @@ function toIpPoolConfig(value) {
 //#endregion
 //#region src/config.ts
 const defaults = {
-	providerId: "dsh-opencode-free",
-	apiKeyEnv: "DSH_OPENCODE_FREE_TOKEN",
+	providerId: "dsh-freetap",
+	apiKeyEnv: "DSH_FREETAP_TOKEN",
 	refreshSeconds: 300,
 	restartDelayMs: 1e3,
 	restartMaxDelayMs: 6e4,
@@ -1232,11 +1230,11 @@ function ordinaryConfig(config) {
 	const { ipPool: _ipPool,...ordinary } = config;
 	return ordinary;
 }
-function configPaths(dataDir) {
+function configPaths(dataDir$1) {
 	return {
-		dataDir,
-		configPath: join(dataDir, "agent-config.json"),
-		tokenPath: join(dataDir, "agent-token.txt")
+		dataDir: dataDir$1,
+		configPath: join(dataDir$1, "agent-config.json"),
+		tokenPath: join(dataDir$1, "agent-token.txt")
 	};
 }
 /** 32-byte random token, base64url (design.md section 7). */
@@ -1297,7 +1295,7 @@ async function writeAgentConfig(paths, options) {
 //#endregion
 //#region src/ip-pool-settings/bridge.ts
 /** Bridge route prefix (same-origin, loopback-only). */
-const IP_POOL_BRIDGE_PREFIX = "/api/dsh-opencode-free/ip-pool";
+const IP_POOL_BRIDGE_PREFIX = "/api/dsh-freetap/ip-pool";
 /** Cap on JSON request bodies (a probe trigger is tiny). */
 const MAX_JSON_BODY_BYTES = 16 * 1024;
 /** Build the /status view over the live runtime (or a disabled stub). */
@@ -1513,7 +1511,7 @@ function makeBridgeHandlers(runtime, settings, deps = {}) {
 			};
 		},
 		async models() {
-			const { staticFreeModels } = await import("./catalog-vIPYIhia.js");
+			const { staticFreeModels } = await import("./catalog-DBBAmPNV.js");
 			const rows = staticFreeModels.map((id) => ({
 				id,
 				verified: true
@@ -1595,7 +1593,7 @@ function makeBridgeRoutes(handlers, deps = {}) {
 //#endregion
 //#region src/ip-pool-settings/apply.ts
 const defaultAssemble = async (config, logger) => {
-	const { startIpPool } = await import("./ip-pool-PVNnCUar.js");
+	const { startIpPool } = await import("./ip-pool-CbRKAd9o.js");
 	return startIpPool(config, logger);
 };
 /**
@@ -1634,12 +1632,12 @@ function applyIpPoolSettings(ctx, ordinary, readIpPool, logger, deps = {}) {
 		const rt = controller.runtime;
 		if (value.enabled && rt === null) {
 			ensureRuntime().then(() => controller.runtime?.reconfigure(controller.asConfig(controller.settings()))).catch((err) => {
-				logger.warn(`dsh-opencode-free: ip pool start failed: ${err instanceof Error ? err.message : String(err)}`);
+				logger.warn(`dsh-freetap: ip pool start failed: ${err instanceof Error ? err.message : String(err)}`);
 			});
 			return;
 		}
 		if (rt !== null) rt.reconfigure(controller.asConfig(value)).catch((err) => {
-			logger.warn(`dsh-opencode-free: ip pool live re-apply failed: ${err instanceof Error ? err.message : String(err)}`);
+			logger.warn(`dsh-freetap: ip pool live re-apply failed: ${err instanceof Error ? err.message : String(err)}`);
 		});
 	};
 	applyCommitted(controller.settings());
@@ -1668,13 +1666,13 @@ function applyIpPoolSettings(ctx, ordinary, readIpPool, logger, deps = {}) {
 		}), { listLiveModels: deps.listLiveModels });
 		const disposers = [];
 		for (const route of makeBridgeRoutes(handlers)) disposers.push(bctx.webServer.register(route));
-		logger.info(`dsh-opencode-free: ip-pool bridge mounted at ${IP_POOL_BRIDGE_PREFIX} (${disposers.length} routes)`);
+		logger.info(`dsh-freetap: ip-pool bridge mounted at ${IP_POOL_BRIDGE_PREFIX} (${disposers.length} routes)`);
 		const maybeEffect$1 = bctx.effect;
 		if (typeof maybeEffect$1 === "function") maybeEffect$1.call(bctx, () => () => {
 			for (const dispose of disposers) dispose();
 		});
 	}));
-	logger.info(`dsh-opencode-free: settings namespace "${IP_POOL_NAMESPACE}" served from the plugin's volatile Config — live apply via 设置 → 插件 → IP 池`);
+	logger.info(`dsh-freetap: settings namespace "${IP_POOL_NAMESPACE}" served from the plugin's volatile Config — live apply via 设置 → 插件 → IP 池`);
 	const maybeEffect = ctx.effect;
 	if (typeof maybeEffect === "function") maybeEffect.call(ctx, () => () => {
 		disposed = true;
@@ -1682,177 +1680,6 @@ function applyIpPoolSettings(ctx, ordinary, readIpPool, logger, deps = {}) {
 		controller.runtime = null;
 	});
 	return controller;
-}
-
-//#endregion
-//#region src/migrate-identity.ts
-/** The retired identity, kept verbatim: it is what exists on disk. */
-const LEGACY_NAME = "opencode2dsh";
-const CURRENT_NAME = "dsh-opencode-free";
-/** `~/.opencode2dsh` — the retired data directory. */
-function legacyDataDir(home = homedir()) {
-	return join(home, `.${LEGACY_NAME}`);
-}
-/** `~/.dsh-opencode-free` — the current data directory. */
-function currentDataDir(home = homedir()) {
-	return join(home, `.${CURRENT_NAME}`);
-}
-/**
-* The settings document, as DSH persists it: one YAML file in the harness
-* home, keyed by namespace.
-*/
-function settingsDocumentPath(home = homedir()) {
-	return join(home, ".dsh", "settings.yaml");
-}
-/** True when the path exists (any type). */
-async function exists(path) {
-	try {
-		await stat(path);
-		return true;
-	} catch {
-		return false;
-	}
-}
-/** Plain objects only; arrays and scalars are copied by value. */
-function isPlainObject(value) {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-/**
-* Copy the retired data directory into the current one.
-*
-* Files only, no recursion: the directory holds flat artifacts
-* (`agent-config.json`, `agent-token.txt`, the models.dev cache, the health
-* snapshot) plus a `singbox/` subtree that is regenerated on demand, so a
-* missing nested file is not worth a failure.
-*
-* The old directory is COPIED, never moved or deleted: a downgrade keeps
-* working, and a half-finished run can simply be repeated.
-*
-* Returns the number of files copied.
-*/
-async function migrateDataDir(logger, deps = {}) {
-	const from = legacyDataDir(deps.home);
-	const to = currentDataDir(deps.home);
-	if (!await exists(from)) return 0;
-	if (await exists(to)) return 0;
-	let copied = 0;
-	try {
-		await mkdir(to, { recursive: true });
-		for (const entry of await readdir(from, { withFileTypes: true })) {
-			if (!entry.isFile()) continue;
-			try {
-				await copyFile(join(from, entry.name), join(to, entry.name));
-				copied++;
-			} catch (err) {
-				logger.warn(`${CURRENT_NAME}: could not migrate ${entry.name}: ${err instanceof Error ? err.message : String(err)}`);
-			}
-		}
-		logger.info(`${CURRENT_NAME}: migrated ${copied} file(s) from ${from} to ${to}`);
-	} catch (err) {
-		logger.warn(`${CURRENT_NAME}: data directory migration skipped: ${err instanceof Error ? err.message : String(err)}`);
-	}
-	return copied;
-}
-/**
-* Keys present in `legacy` that `current` does not define yet.
-*
-* Recursive on plain objects so a partially-configured new section (say, the
-* user already enabled the pool) still receives the untouched siblings. Arrays
-* are leaves: a saved list fills an absent list, but never overwrites one the
-* user has since edited.
-*/
-function missingKeys(legacy, current) {
-	if (!isPlainObject(legacy)) return void 0;
-	const source = legacy;
-	const target = isPlainObject(current) ? current : {};
-	const diff = {};
-	for (const [key, value] of Object.entries(source)) {
-		if (!(key in target) || target[key] === void 0) {
-			diff[key] = value;
-			continue;
-		}
-		const nested = missingKeys(value, target[key]);
-		if (nested !== void 0 && Object.keys(nested).length > 0) diff[key] = nested;
-	}
-	return Object.keys(diff).length > 0 ? diff : void 0;
-}
-/** Merge `patch` into `base` without dropping siblings (plain objects only). */
-function mergeDeep(base, patch) {
-	const target = isPlainObject(base) ? { ...base } : {};
-	for (const [key, value] of Object.entries(patch)) if (isPlainObject(value) && isPlainObject(target[key])) target[key] = mergeDeep(target[key], value);
-	else target[key] = value;
-	return target;
-}
-/**
-* Copy the retired namespace's section into the current one, inside the
-* settings document.
-*
-* Returns the number of leaf keys copied (0 when there was nothing to do).
-* Never throws: a malformed document, an absent file, or a read-only home is
-* logged and skipped.
-*/
-async function migrateSettingsDocument(logger, deps = {}) {
-	const path = settingsDocumentPath(deps.home);
-	if (!await exists(path)) return 0;
-	let document;
-	try {
-		document = parse(await readFile(path, "utf8"));
-	} catch (err) {
-		logger.warn(`${CURRENT_NAME}: settings document is not readable YAML; migration skipped: ${err instanceof Error ? err.message : String(err)}`);
-		return 0;
-	}
-	if (!isPlainObject(document)) return 0;
-	const legacy = document[LEGACY_NAME];
-	if (!isPlainObject(legacy)) return 0;
-	const diff = missingKeys(legacy, document[CURRENT_NAME]);
-	if (diff === void 0) return 0;
-	const next = {
-		...document,
-		[CURRENT_NAME]: mergeDeep(document[CURRENT_NAME], diff)
-	};
-	try {
-		const tmp = `${path}.${CURRENT_NAME}-migrate.tmp`;
-		await mkdir(dirname(path), { recursive: true });
-		await writeFile(tmp, stringify(next), "utf8");
-		await rename(tmp, path);
-	} catch (err) {
-		logger.warn(`${CURRENT_NAME}: settings document migration skipped: ${err instanceof Error ? err.message : String(err)}`);
-		return 0;
-	}
-	const copied = countLeaves(diff);
-	logger.info(`${CURRENT_NAME}: copied ${copied} saved setting(s) from the "${LEGACY_NAME}" section of ~/.dsh/settings.yaml`);
-	return copied;
-}
-/** Number of leaf values in a diff object. */
-function countLeaves(value) {
-	let total = 0;
-	for (const entry of Object.values(value)) if (isPlainObject(entry) && Object.keys(entry).length > 0) total += countLeaves(entry);
-	else total++;
-	return total;
-}
-/**
-* Mark the migration as done, so a future downgrade/upgrade cycle does not
-* re-copy state the user has since changed. The marker lives in the current
-* data directory, which is why the directory migration runs first.
-*/
-async function writeMigrationMarker(deps = {}) {
-	const dir = currentDataDir(deps.home);
-	await mkdir(dir, { recursive: true });
-	await writeFile(join(dir, "migrated-from.json"), JSON.stringify({
-		from: LEGACY_NAME,
-		at: (/* @__PURE__ */ new Date()).toISOString()
-	}, null, 2), "utf8");
-}
-/**
-* Run both halves of the migration once.
-*
-* Never throws: every step logs and moves on, because this runs on the startup
-* path of the deployment's only free provider.
-*/
-async function runIdentityMigration(deps = {}, logger) {
-	await migrateDataDir(logger, { home: deps.home });
-	await migrateSettingsDocument(logger, { home: deps.home });
-	await writeMigrationMarker({ home: deps.home }).catch(() => {});
 }
 
 //#endregion
@@ -1947,16 +1774,16 @@ async function fetchHealth(port, timeoutMs = 3e3) {
 * Ensure the credential and the llm-pi-ai provider route reflect the running
 * agent. Safe to call repeatedly (every refresh): writes are no-ops when the
 * stored shape already matches, and mutate keeps other namespaces/routes
-* untouched because it edits only the dsh-opencode-free subtree.
+* untouched because it edits only the dsh-freetap subtree.
 */
 async function registerProvider(seams, target, token, models) {
 	await seams.credentials.set(target.apiKeyEnv, token);
 	if (typeof seams.settings.mutate !== "function") {
-		seams.logger.warn("dsh-opencode-free: settings seam lacks mutate; the sidecar provider route cannot be published");
+		seams.logger.warn("dsh-freetap: settings seam lacks mutate; the sidecar provider route cannot be published");
 		return;
 	}
 	const route = {
-		displayName: "dsh-opencode-free",
+		displayName: "dsh-freetap",
 		apiKeyEnv: target.apiKeyEnv,
 		api: "openai-completions",
 		baseURL: providerBaseURL(target.port),
@@ -1967,12 +1794,12 @@ async function registerProvider(seams, target, token, models) {
 		path: ["providers", target.providerId],
 		value: route
 	}]);
-	seams.logger.info(`dsh-opencode-free: registered llm-pi-ai provider "${target.providerId}" with ${models.length} model(s) at ${route.baseURL}`);
+	seams.logger.info(`dsh-freetap: registered llm-pi-ai provider "${target.providerId}" with ${models.length} model(s) at ${route.baseURL}`);
 }
 
 //#endregion
 //#region src/index.ts
-const name = "dsh-opencode-free";
+const name = "dsh-freetap";
 /**
 * Only `llm` gates this fiber, because adapter mode (the shipped default) uses
 * nothing else: the Zen lane's credential is the literal `'public'`, and the
@@ -2004,11 +1831,11 @@ function applyAdapter(ctx, config, readIpPool) {
 		version: "adapter"
 	});
 	if (!ctx.llm || typeof ctx.llm.registerAdapter !== "function") {
-		logger.error("dsh-opencode-free: llm service unavailable; adapter mode cannot register");
+		logger.error("dsh-freetap: llm service unavailable; adapter mode cannot register");
 		return { ready };
 	}
-	const dataDir = currentDataDir();
-	const statusPath = join(dataDir, "adapter-status.json");
+	const dataDir$1 = dataDir();
+	const statusPath = join(dataDir$1, "adapter-status.json");
 	const writeStatus = (status, lastError) => {
 		writeFile(statusPath, JSON.stringify({
 			...status,
@@ -2027,11 +1854,11 @@ function applyAdapter(ctx, config, readIpPool) {
 	]));
 	const catalog = new ModelCatalog({
 		refreshSeconds: cfg.refreshSeconds,
-		cachePath: defaultCachePath(dataDir),
+		cachePath: defaultCachePath(dataDir$1),
 		onRefresh: (status, lastError) => {
 			if (disposed) return;
 			writeStatus(status, lastError);
-			if (lastError) logger.warn(`dsh-opencode-free: catalog refresh issue: ${lastError}`);
+			if (lastError) logger.warn(`dsh-freetap: catalog refresh issue: ${lastError}`);
 			const signature = catalogSignature();
 			if (signature === publishedCatalog) return;
 			try {
@@ -2041,7 +1868,7 @@ function applyAdapter(ctx, config, readIpPool) {
 				else return;
 				publishedCatalog = signature;
 			} catch (err) {
-				logger.warn(`dsh-opencode-free: catalog announcement failed: ${err instanceof Error ? err.message : String(err)}`);
+				logger.warn(`dsh-freetap: catalog announcement failed: ${err instanceof Error ? err.message : String(err)}`);
 			}
 		}
 	});
@@ -2052,26 +1879,21 @@ function applyAdapter(ctx, config, readIpPool) {
 	});
 	publishedCatalog = catalogSignature();
 	registration = ctx.llm.registerAdapter([PROVIDER_ID], adapter);
-	logger.info(`dsh-opencode-free: adapter registered for "${PROVIDER_ID}" (catalog warms up in background)`);
+	logger.info(`dsh-freetap: adapter registered for "${PROVIDER_ID}" (catalog warms up in background)`);
 	try {
 		applyIpPoolSettings(ctx, ordinary, readIpPool, logger, { listLiveModels: () => catalog.list() });
 	} catch (err) {
-		logger.error(`dsh-opencode-free: ip-pool settings wiring failed; the provider route stays direct: ${err instanceof Error ? err.message : String(err)}`);
+		logger.error(`dsh-freetap: ip-pool settings wiring failed; the provider route stays direct: ${err instanceof Error ? err.message : String(err)}`);
 	}
 	catalog.start().catch((err) => {
-		logger.error(`dsh-opencode-free: catalog start failed: ${err instanceof Error ? err.message : String(err)}`);
-	});
-	runIdentityMigration({}, logger).catch((err) => {
-		logger.warn(`dsh-opencode-free: identity migration skipped: ${err instanceof Error ? err.message : String(err)}`);
+		logger.error(`dsh-freetap: catalog start failed: ${err instanceof Error ? err.message : String(err)}`);
 	});
 	if (typeof ctx.inject === "function") Promise.resolve(ctx.inject(["settings"], (sctx) => {
 		if (!sctx.settings) return;
-		removeProviderRoute({ settings: sctx.settings }, cfg.providerId).then(async (removed) => {
-			let swept = removed;
-			if (cfg.providerId !== LEGACY_NAME) swept = await removeProviderRoute({ settings: sctx.settings }, LEGACY_NAME) || swept;
-			if (swept) logger.info(`dsh-opencode-free: removed stale sidecar route(s) from llm-pi-ai settings`);
+		removeProviderRoute({ settings: sctx.settings }, cfg.providerId).then((swept) => {
+			if (swept) logger.info(`dsh-freetap: removed stale sidecar route(s) from llm-pi-ai settings`);
 		}).catch((err) => {
-			logger.warn(`dsh-opencode-free: stale route cleanup failed: ${err instanceof Error ? err.message : String(err)}`);
+			logger.warn(`dsh-freetap: stale route cleanup failed: ${err instanceof Error ? err.message : String(err)}`);
 		});
 	}));
 	const maybeEffect = ctx.effect;
@@ -2083,7 +1905,7 @@ function applyAdapter(ctx, config, readIpPool) {
 }
 function applySidecar(ctx, config) {
 	const cfg = resolveConfig(config);
-	const paths = configPaths(join(homedir(), ".dsh-opencode-free"));
+	const paths = configPaths(dataDir());
 	const logger = ctx.logger;
 	let agent = null;
 	let refreshTimer = null;
@@ -2140,7 +1962,7 @@ function applySidecar(ctx, config) {
 			} catch {}
 			await new Promise((r) => setTimeout(r, 300));
 		}
-		logger.warn("dsh-opencode-free: catalog still pending after timeout; registering whatever the agent exposes now");
+		logger.warn("dsh-freetap: catalog still pending after timeout; registering whatever the agent exposes now");
 	}
 	async function refreshModels(info, token, { waitReady = false } = {}) {
 		try {
@@ -2159,9 +1981,9 @@ function applySidecar(ctx, config) {
 				apiKeyEnv: cfg.apiKeyEnv,
 				port: info.port
 			}, token, models);
-			else logger.warn("dsh-opencode-free: credentials/settings services unavailable; provider route not registered");
+			else logger.warn("dsh-freetap: credentials/settings services unavailable; provider route not registered");
 		} catch (err) {
-			logger.warn(`dsh-opencode-free: model refresh failed: ${err instanceof Error ? err.message : String(err)}`);
+			logger.warn(`dsh-freetap: model refresh failed: ${err instanceof Error ? err.message : String(err)}`);
 		}
 	}
 	function scheduleRefresh(info, token) {
@@ -2191,13 +2013,13 @@ function applySidecar(ctx, config) {
 			onLog
 		});
 		agent.on("exit-restart", (delay, crashes) => {
-			logger.warn(`dsh-opencode-free: agent exited unexpectedly; restarting in ${delay}ms (attempt ${crashes})`);
+			logger.warn(`dsh-freetap: agent exited unexpectedly; restarting in ${delay}ms (attempt ${crashes})`);
 		});
 		agent.on("circuit-tripped", (crashes) => {
-			logger.error(`dsh-opencode-free: agent crashed ${crashes} times consecutively; giving up`);
+			logger.error(`dsh-freetap: agent crashed ${crashes} times consecutively; giving up`);
 		});
 		agent.on("state", (state) => {
-			if (state === "ready") logger.info("dsh-opencode-free: agent ready");
+			if (state === "ready") logger.info("dsh-freetap: agent ready");
 		});
 		const info = await agent.start();
 		readyResolve(info);
@@ -2206,7 +2028,7 @@ function applySidecar(ctx, config) {
 		return info;
 	}
 	startOnce().catch((err) => {
-		logger.error(`dsh-opencode-free: failed to start agent: ${err instanceof Error ? err.message : String(err)}`);
+		logger.error(`dsh-freetap: failed to start agent: ${err instanceof Error ? err.message : String(err)}`);
 	});
 	const maybeEffect = ctx.effect;
 	if (typeof maybeEffect === "function") maybeEffect.call(ctx, () => () => {
@@ -2231,7 +2053,7 @@ function applySidecar(ctx, config) {
 * build; then a bare name on PATH.
 */
 function defaultAgentPath() {
-	const bin = "dsh-opencode-free-agent";
+	const bin = "dsh-freetap-agent";
 	const exe = process.platform === "win32" ? `${bin}.exe` : bin;
 	const here = __dirnameSafe();
 	for (const sibling of [join(here, "..", "..", "..", "legacy", "agent", exe), join(here, "..", "..", "legacy", "agent", exe)]) if (existsSync(sibling)) return sibling;

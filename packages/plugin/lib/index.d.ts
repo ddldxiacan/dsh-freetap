@@ -45,7 +45,7 @@ interface IpPoolSettings {
 /**
  * Plugin configuration (cordis config object, injected via cordis.patch.yml).
  */
-interface DshOpencodeFreeConfig {
+interface DshFreetapConfig {
   /**
    * Integration mode. `adapter` (default) registers a DSH LlmAdapter that
    * streams directly from the Zen anonymous lane — no child process. `sidecar`
@@ -132,8 +132,8 @@ interface IpPoolConfig {
   /** Same-request rotate attempts on pre-content failures (docs 3.4). */
   maxRotateAttempts?: number;
 }
-type ResolvedConfig = Required<Pick<DshOpencodeFreeConfig, 'providerId' | 'apiKeyEnv' | 'refreshSeconds' | 'restartDelayMs' | 'restartMaxDelayMs' | 'maxConsecutiveCrashes'>> & DshOpencodeFreeConfig;
-declare function resolveConfig(config?: DshOpencodeFreeConfig): ResolvedConfig;
+type ResolvedConfig = Required<Pick<DshFreetapConfig, 'providerId' | 'apiKeyEnv' | 'refreshSeconds' | 'restartDelayMs' | 'restartMaxDelayMs' | 'maxConsecutiveCrashes'>> & DshFreetapConfig;
+declare function resolveConfig(config?: DshFreetapConfig): ResolvedConfig;
 /**
  * The plugin's `Config` — the whole DSH settings contract in one schema.
  *
@@ -486,13 +486,13 @@ declare function fetchHealth(port: number, timeoutMs?: number): Promise<unknown>
  * Ensure the credential and the llm-pi-ai provider route reflect the running
  * agent. Safe to call repeatedly (every refresh): writes are no-ops when the
  * stored shape already matches, and mutate keeps other namespaces/routes
- * untouched because it edits only the dsh-opencode-free subtree.
+ * untouched because it edits only the dsh-freetap subtree.
  */
 declare function registerProvider(seams: DshSeams, target: ProviderTarget, token: string, models: PiAiModelEntry[]): Promise<void>;
 //#endregion
 //#region src/index.d.ts
 /**
- * dsh-opencode-free DSH cordis plugin entry.
+ * dsh-freetap DSH cordis plugin entry.
  *
  * Two modes (config.mode, default `adapter`):
  *  - adapter: register a DSH LlmAdapter streaming directly from the Zen
@@ -556,7 +556,7 @@ interface PluginContext {
   on?(event: string, listener: (...args: never[]) => unknown): () => void;
   emit?(event: string): unknown;
 }
-declare const name = "dsh-opencode-free";
+declare const name = "dsh-freetap";
 /**
  * Only `llm` gates this fiber, because adapter mode (the shipped default) uses
  * nothing else: the Zen lane's credential is the literal `'public'`, and the
@@ -569,7 +569,7 @@ declare const name = "dsh-opencode-free";
  * `ctx.inject` instead.
  */
 declare const inject: readonly ["llm"];
-declare function apply(ctx: PluginContext, config?: ResolvedPluginConfig | DshOpencodeFreeConfig): void;
+declare function apply(ctx: PluginContext, config?: ResolvedPluginConfig | DshFreetapConfig): void;
 /**
  * Locate the agent binary (sidecar mode, legacy — the published package does
  * not bundle it): explicit config wins; then a sibling `legacy/agent` dev
@@ -577,4 +577,4 @@ declare function apply(ctx: PluginContext, config?: ResolvedPluginConfig | DshOp
  */
 declare function defaultAgentPath(): string;
 //#endregion
-export { AgentProcess, Config, type DshOpencodeFreeConfig, type DshSeams, PluginContext, apply, configPaths, defaultAgentPath, ensureToken, fetchHealth, fetchModels, inject, name, providerBaseURL, registerProvider, resolveConfig, toPiAiModels, writeAgentConfig };
+export { AgentProcess, Config, type DshFreetapConfig, type DshSeams, PluginContext, apply, configPaths, defaultAgentPath, ensureToken, fetchHealth, fetchModels, inject, name, providerBaseURL, registerProvider, resolveConfig, toPiAiModels, writeAgentConfig };

@@ -1,4 +1,4 @@
-window.__ModuleLoader__.load({ id: "@dsh-opencode-free/dsh-plugin", factory: (require) => {
+window.__ModuleLoader__.load({ id: "dsh-freetap", factory: (require) => {
 var module = { exports: {} }; var exports = module.exports;
 //#region rolldown:runtime
 var __create = Object.create;
@@ -32,10 +32,10 @@ react_jsx_runtime = __toESM(react_jsx_runtime);
 
 //#region \0dsh-css:src/client/ip-pool.module.css.mjs
 const css = ".kJ5BQa_body{flex-direction:column;gap:14px;display:flex}.kJ5BQa_status{color:var(--dsw-alias-label-tertiary,#6b7280);margin:4px 0;font-size:13px;line-height:1.5}.kJ5BQa_field{flex-direction:column;gap:4px;display:flex}.kJ5BQa_fieldRow{gap:10px;display:flex}.kJ5BQa_fieldRow>.kJ5BQa_field{flex:1 1 0;min-width:0}.kJ5BQa_fieldLabel{color:var(--dsw-alias-label-primary,#1f2329);font-size:13px;font-weight:500}.kJ5BQa_fieldHint{color:var(--dsw-alias-label-tertiary,#6b7280);font-size:12px;line-height:1.45}.kJ5BQa_input{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2,#d0d7de);background:var(--dsw-alias-bg-layer-2,#f6f8fa);width:100%;color:var(--dsw-alias-label-primary,#1f2329);color-scheme:light;border-radius:6px;padding:6px 8px;font-size:13px}.kJ5BQa_input:focus{outline:2px solid var(--dsw-alias-state-business-primary,#4f8cff);outline-offset:-1px}body[data-ds-dark-theme] .kJ5BQa_input,body[data-ds-dark-theme] .kJ5BQa_select{color-scheme:dark}.kJ5BQa_textarea{resize:vertical;min-height:56px;font-family:inherit;}.kJ5BQa_rowList{flex-direction:column;gap:6px;margin:0;padding:0;list-style:none;display:flex}.kJ5BQa_row{align-items:center;gap:6px;display:flex}.kJ5BQa_rowLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-primary,#1f2329);flex:1 1 0;font-size:13px;overflow:hidden}.kJ5BQa_rowInput{flex:1 1 0;}.kJ5BQa_rowRemove{border:1px solid var(--dsw-alias-border-l2,#d0d7de);background:var(--dsw-alias-bg-layer-2,#f6f8fa);color:var(--dsw-alias-label-secondary,#4b5563);cursor:pointer;border-radius:6px;flex:none;padding:4px 8px;font-size:12px}.kJ5BQa_rowRemove:hover{border-color:var(--dsw-alias-state-error-primary,#d1242f);color:var(--dsw-alias-state-error-primary,#d1242f)}.kJ5BQa_rowAdd{border:1px dashed var(--dsw-alias-border-l3,#a6adb4);color:var(--dsw-alias-label-secondary,#4b5563);cursor:pointer;background:0 0;border-radius:6px;align-self:flex-start;padding:4px 10px;font-size:12px}.kJ5BQa_rowAdd:hover{border-color:var(--dsw-alias-state-business-primary,#4f8cff);color:var(--dsw-alias-state-business-primary,#4f8cff)}.kJ5BQa_ghostButton{border:1px solid var(--dsw-alias-border-l2,#d0d7de);background:var(--dsw-alias-bg-layer-2,#f6f8fa);color:var(--dsw-alias-label-secondary,#4b5563);cursor:pointer;border-radius:6px;padding:6px 12px;font-size:13px}.kJ5BQa_ghostButton:hover{border-color:var(--dsw-alias-border-l3,#a6adb4)}.kJ5BQa_saveStatus{font-size:12px;line-height:1.4}.kJ5BQa_saveStatusOk{color:var(--dsw-alias-state-success-primary,#1a7f37)}.kJ5BQa_saveStatusError{color:var(--dsw-alias-state-error-primary,#d1242f)}.kJ5BQa_overviewBar{border:1px solid var(--dsw-alias-border-l2,#d0d7de);background:var(--dsw-alias-bg-layer-2,#f6f8fa);color:var(--dsw-alias-label-secondary,#4b5563);border-radius:8px;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 10px;font-size:12px;display:flex}.kJ5BQa_badge{border:1px solid var(--dsw-alias-border-l2,#d0d7de);color:var(--dsw-alias-label-secondary,#4b5563);white-space:nowrap;border-radius:999px;align-items:center;gap:4px;padding:2px 8px;font-size:11px;line-height:1.5;display:inline-flex}.kJ5BQa_badgeHealthy{border-color:var(--dsw-alias-state-success-primary,#1a7f37);color:var(--dsw-alias-state-success-primary,#1a7f37)}.kJ5BQa_badgeWarning{border-color:var(--dsw-alias-state-warning-primary,#9a6700);color:var(--dsw-alias-state-warning-primary,#9a6700)}.kJ5BQa_badgeCritical,.kJ5BQa_badgeEmergency{border-color:var(--dsw-alias-state-error-primary,#d1242f);color:var(--dsw-alias-state-error-primary,#d1242f)}.kJ5BQa_badgePinned{border-color:var(--dsw-alias-state-business-primary,#4f8cff);color:var(--dsw-alias-state-business-primary,#4f8cff)}.kJ5BQa_table{border:1px solid var(--dsw-alias-border-l2,#d0d7de);border-radius:8px;display:block;overflow-x:auto}.kJ5BQa_tableGrid{border-collapse:collapse;width:100%;font-size:12px}.kJ5BQa_tableGrid th,.kJ5BQa_tableGrid td{border-bottom:1px solid var(--dsw-alias-border-l2,#d0d7de);text-align:left;color:var(--dsw-alias-label-secondary,#4b5563);white-space:nowrap;padding:6px 8px}.kJ5BQa_tableGrid th{color:var(--dsw-alias-label-primary,#1f2329);background:var(--dsw-alias-bg-layer-2,#f6f8fa);font-weight:600}.kJ5BQa_tableGrid tr:last-child td{border-bottom:none}.kJ5BQa_mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.kJ5BQa_stateOk{color:var(--dsw-alias-state-success-primary,#1a7f37)}.kJ5BQa_stateCooling{color:var(--dsw-alias-state-warning-primary,#9a6700)}.kJ5BQa_stateDead{color:var(--dsw-alias-state-error-primary,#d1242f)}.kJ5BQa_stateUnknown{color:var(--dsw-alias-label-tertiary,#6b7280)}.kJ5BQa_section{border:1px solid var(--dsw-alias-border-l2,#d0d7de);background:var(--dsw-alias-bg-layer-2,#f6f8fe80);border-radius:8px;flex-direction:column;gap:8px;padding:10px 12px;display:flex}.kJ5BQa_sectionTitle{color:var(--dsw-alias-label-primary,#1f2329);font-size:13px;font-weight:600}.kJ5BQa_radio{color:var(--dsw-alias-label-secondary,#4b5563);cursor:pointer;align-items:center;gap:6px;font-size:13px;display:flex}.kJ5BQa_compliance{color:var(--dsw-alias-label-tertiary,#6b7280);border-top:1px dashed var(--dsw-alias-border-l2,#d0d7de);padding-top:10px;font-size:11px;line-height:1.5}.kJ5BQa_collapseToggle{color:var(--dsw-alias-state-business-primary,#4f8cff);cursor:pointer;background:0 0;border:none;align-self:flex-start;padding:2px 8px;font-size:12px}";
-const tagId = "@dsh-opencode-free/dsh-plugin/ip-pool.module.css";
+const tagId = "dsh-freetap/ip-pool.module.css";
 if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 	const tag = document.createElement("style");
-	tag.dataset.plugin = "@dsh-opencode-free/dsh-plugin";
+	tag.dataset.plugin = "dsh-freetap";
 	tag.dataset.pluginCss = tagId;
 	tag.textContent = css;
 	document.head.appendChild(tag);
@@ -145,7 +145,7 @@ function normalizeSubscriptionUserAgent(value) {
 //#region src/client/bridge-action.ts
 /** HTTP 200 can carry a refused action; surface both transport and application errors. */
 async function postBridgeAction(body) {
-	const response = await fetch("/api/dsh-opencode-free/ip-pool/probe", {
+	const response = await fetch("/api/dsh-freetap/ip-pool/probe", {
 		method: "POST",
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify(body)
@@ -165,7 +165,7 @@ const formLabels = (t) => ({
 	saving: t("saving")
 });
 /** The bridge prefix (same-origin, loopback-only on the host). */
-const BRIDGE_PREFIX = "/api/dsh-opencode-free/ip-pool";
+const BRIDGE_PREFIX = "/api/dsh-freetap/ip-pool";
 /**
 * The field inside the served entry that holds the editable section: the
 * `ipPool` volatile node in the plugin's Config schema. Every write path is
@@ -1206,7 +1206,7 @@ function IpPoolCard(props) {
 /** Simplified Chinese dictionary (the key-set source of truth). */
 const zh = {
 	nav: "IP 池",
-	title: "IP 池（dsh-opencode-free）",
+	title: "IP 池（dsh-freetap）",
 	description: "多出口调度免费模型的可用性：出口间自动轮换、429 冷却、按出口×模型探活。",
 	statusLoading: "加载中…",
 	statusUnavailable: "设置服务不可用，无法读写 IP 池配置。",
@@ -1309,7 +1309,7 @@ const zh = {
 /** English dictionary, checked complete against the zh key set. */
 const en = {
 	nav: "IP Pool",
-	title: "IP Pool (dsh-opencode-free)",
+	title: "IP Pool (dsh-freetap)",
 	description: "Schedules free-model availability across exit IPs: rotation, 429 cooldown, per-exit×model probes.",
 	statusLoading: "Loading…",
 	statusUnavailable: "Settings service unavailable; the IP pool configuration cannot be read or written.",
@@ -1418,7 +1418,7 @@ const NS = "settings.ip-pool";
 * The Host settings entry this page edits: the Loader entry id, which is the
 * plugin name. The editable field inside it is `ipPool`.
 */
-const SETTINGS_NAMESPACE = "dsh-opencode-free";
+const SETTINGS_NAMESPACE = "dsh-freetap";
 /** Where this page sorts among the Plugins page's official entries. */
 const ORDER = 20;
 /**
@@ -1437,19 +1437,16 @@ function apply(ctx) {
 	ctx.effect(() => ctx.locale.register(NS, {
 		zh,
 		en
-	}), "dsh-opencode-free: copy dictionaries");
+	}), "dsh-freetap: copy dictionaries");
 	const slots = ctx.slots;
 	ctx.inject(["configForms"], (formCtx) => {
 		formCtx.effect(() => formCtx.configForms.whileServed([SETTINGS_NAMESPACE], () => {
 			const row = slots.inject("plugins.row.config", () => {
-				const disposers = ["@dsh-opencode-free/dsh-plugin", "dsh-opencode-free"].map((pkg) => slots.register({
+				return slots.register({
 					name: "plugins.row.config",
-					key: `${pkg}#${SETTINGS_NAMESPACE}`,
+					key: `dsh-freetap#${SETTINGS_NAMESPACE}`,
 					locale: NS
-				}, IpPoolCard));
-				return () => {
-					for (const dispose of disposers) dispose();
-				};
+				}, IpPoolCard);
 			});
 			const legacy = slots.inject("plugins.item", () => {
 				if (slots.spec("plugins.row.config") !== void 0) return () => {};
@@ -1465,7 +1462,7 @@ function apply(ctx) {
 				row();
 				legacy();
 			};
-		}), "dsh-opencode-free: settings page");
+		}), "dsh-freetap: settings page");
 	});
 }
 

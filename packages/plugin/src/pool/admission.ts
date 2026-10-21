@@ -225,7 +225,7 @@ export async function admitCandidate(
   const probeHeaders = disguiseHeaders({
     session: canonicalSessionID(`admission:${candidate.address}`),
     request: randomID('req', 16),
-    project: stableID('prj', 'dsh-opencode-free:default-project'),
+    project: stableID('prj', 'dsh-freetap:default-project'),
     parentSession: '',
   })
 
@@ -275,9 +275,9 @@ export async function admitCandidate(
         authorization: 'Bearer public',
         'content-type': 'application/json',
         ...disguiseHeaders({
-          session: canonicalSessionID('dsh-opencode-free:admission-smoke'),
+          session: canonicalSessionID('dsh-freetap:admission-smoke'),
           request: randomID('req', 16),
-          project: stableID('prj', 'dsh-opencode-free:admission'),
+          project: stableID('prj', 'dsh-freetap:admission'),
           parentSession: '',
         }),
         ...probeHeaders,
@@ -365,7 +365,7 @@ export async function admitTrusted(
   if (result.admitted) return result
   // Trusted candidates: keep the node (the address is the routing key
   // fallback, 3.1), warn, and let periodic probing revisit.
-  deps.logger?.warn(`dsh-opencode-free: trusted exit ${candidate.address} failed admission (${result.reason}); admitted with ${options.previous?.exitIP ? 'previous' : 'unknown'} exit facts`)
+  deps.logger?.warn(`dsh-freetap: trusted exit ${candidate.address} failed admission (${result.reason}); admitted with ${options.previous?.exitIP ? 'previous' : 'unknown'} exit facts`)
   const previous = options.previous
   const measured = previous !== undefined && previous.latencyMs > 0
   return {

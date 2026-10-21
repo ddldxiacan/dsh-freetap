@@ -1,4 +1,3 @@
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { existsSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
@@ -6,14 +5,14 @@ import { writeFile } from 'node:fs/promises'
 import { ModelCatalog, defaultCachePath, type CatalogSnapshot } from './adapter/catalog.ts'
 import { ZenAdapter, PROVIDER_ID } from './adapter/zen-adapter.ts'
 import { AgentProcess, type ReadyInfo } from './agent-process.ts'
-import { Config, configPaths, ensureToken, ordinaryConfig, resolveConfig, writeAgentConfig, type DshOpencodeFreeConfig, type ResolvedPluginConfig } from './config.ts'
+import { Config, configPaths, ensureToken, ordinaryConfig, resolveConfig, writeAgentConfig, type DshFreetapConfig, type ResolvedPluginConfig } from './config.ts'
+import { dataDir as pluginDataDir } from './data-dir.ts'
 import { applyIpPoolSettings } from './ip-pool-settings/apply.ts'
 import { readVolatile, type IpPoolSettings } from './ip-pool-settings/namespace.ts'
-import { currentDataDir, LEGACY_NAME, runIdentityMigration } from './migrate-identity.ts'
 import { fetchHealth, fetchModels, registerProvider, removeProviderRoute } from './provider.ts'
 
 /**
- * dsh-opencode-free DSH cordis plugin entry.
+ * dsh-freetap DSH cordis plugin entry.
  *
  * Two modes (config.mode, default `adapter`):
  *  - adapter: register a DSH LlmAdapter streaming directly from the Zen
@@ -61,7 +60,7 @@ export interface PluginContext {
   emit?(event: string): unknown
 }
 
-export const name = 'dsh-opencode-free'
+export const name = 'dsh-freetap'
 /**
  * The plugin's own settings schema. DSH 0.1.7 reads this export to decide
  * which fields are editable in 设置 → 插件 and under which namespace (the
@@ -80,13 +79,13 @@ export { Config } from './config.ts'
  * `ctx.inject` instead.
  */
 export const inject = ['llm'] as const
-export function apply(ctx: PluginContext, config: ResolvedPluginConfig | DshOpencodeFreeConfig = {}): void {
+export function apply(ctx: PluginContext, config: ResolvedPluginConfig | DshFreetapConfig = {}): void {
   // A host that predates the `Config` export hands over the raw patch object
   // (no volatile reference); readVolatile copes with both spellings.
   const resolved = config as ResolvedPluginConfig
-  const mode = resolveConfig(config as DshOpencodeFreeConfig).mode
+  const mode = resolveConfig(config as DshFreetapConfig).mode
   // Cordis accepts disposal effects; readiness objects are invalid effects.
-  if (mode === 'sidecar') applySidecar(ctx, config as DshOpencodeFreeConfig)
+  if (mode === 'sidecar') applySidecar(ctx, config as DshFreetapConfig)
   else applyAdapter(ctx, resolved, () => readVolatile<IpPoolSettings>(resolved.ipPool))
 }
 
@@ -109,7 +108,7 @@ function applyAdapter(
   const ready = Promise.resolve({ port: 0, version: 'adapter' })
 
   if (!ctx.llm || typeof ctx.llm.registerAdapter !== 'function') {
-    logger.error('dsh-opencode-free: llm service unavailable; adapter mode cannot register')
+    logger.error('dsh-freetap: llm service unavailable; adapter mode cannot register')
     return { ready }
   }
 
@@ -119,7 +118,7 @@ function applyAdapter(
   // cordis.patch.yml; disabled keeps the process byte-for-byte on direct.
   // Lifecycle (assembly on first enable, live reconfigure, dispose) is owned
   // by applyIpPoolSettings through the plugin fiber.
-  const dataDir = currentDataDir()
+  const dataDir = pluginDataDir()
   const statusPath = join(dataDir, 'adapter-status.json')
   const writeStatus = (status: CatalogSnapshot, lastError: string): void => {
     void writeFile(
@@ -141,7 +140,7 @@ function applyAdapter(
     onRefresh: (status, lastError) => {
       if (disposed) return
       writeStatus(status, lastError)
-      if (lastError) logger.warn(`dsh-opencode-free: catalog refresh issue: ${lastError}`)
+      if (lastError) logger.warn(`dsh-freetap: catalog refresh issue: ${lastError}`)
       const signature = catalogSignature()
       if (signature === publishedCatalog) return
       try {
@@ -153,7 +152,7 @@ function applyAdapter(
         else return
         publishedCatalog = signature
       } catch (err) {
-        logger.warn(`dsh-opencode-free: catalog announcement failed: ${err instanceof Error ? err.message : String(err)}`)
+        logger.warn(`dsh-freetap: catalog announcement failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     },
   })
@@ -172,7 +171,7 @@ function applyAdapter(
   // cost the deployment its only free provider.
   publishedCatalog = catalogSignature()
   registration = ctx.llm.registerAdapter([PROVIDER_ID], adapter)
-  logger.info(`dsh-opencode-free: adapter registered for "${PROVIDER_ID}" (catalog warms up in background)`)
+  logger.info(`dsh-freetap: adapter registered for "${PROVIDER_ID}" (catalog warms up in background)`)
 
   // IP-pool exit routing (docs/ip-pool.md IP-1..IP-5): manual proxies,
   // pinned, free sources, subscriptions, and (IP-5) the volatile `ipPool`
@@ -186,24 +185,14 @@ function applyAdapter(
   try {
     applyIpPoolSettings(ctx, ordinary, readIpPool, logger, { listLiveModels: () => catalog.list() })
   } catch (err) {
-    logger.error(`dsh-opencode-free: ip-pool settings wiring failed; the provider route stays direct: ${err instanceof Error ? err.message : String(err)}`)
+    logger.error(`dsh-freetap: ip-pool settings wiring failed; the provider route stays direct: ${err instanceof Error ? err.message : String(err)}`)
   }
 
   void catalog.start().catch((err) => {
-    logger.error(`dsh-opencode-free: catalog start failed: ${err instanceof Error ? err.message : String(err)}`)
+    logger.error(`dsh-freetap: catalog start failed: ${err instanceof Error ? err.message : String(err)}`)
   })
 
-  // Rename carry-over: the retired `opencode2dsh` data directory and settings
-  // section carry the user's cache, health snapshot and saved ipPool document.
-  // Both are copied once, before anything reads them. This runs unconditionally
-  // and outside the settings seam below, because the settings half reads the
-  // settings DOCUMENT rather than the service — after the rename the retired
-  // namespace is no longer registered, so describe()/get() cannot see it.
-  void runIdentityMigration({}, logger).catch((err) => {
-    logger.warn(`dsh-opencode-free: identity migration skipped: ${err instanceof Error ? err.message : String(err)}`)
-  })
-
-  // A sidecar leftover (llm-pi-ai.providers.dsh-opencode-free pointing at a dead
+  // A sidecar leftover (llm-pi-ai.providers.dsh-freetap pointing at a dead
   // local port) would shadow the adapter registration and fail every dispatch
   // with a connection error. Remove it before the route can be used.
   //
@@ -215,18 +204,11 @@ function applyAdapter(
     void Promise.resolve(ctx.inject(['settings'], (sctx: PluginContext) => {
       if (!sctx.settings) return
       void removeProviderRoute({ settings: sctx.settings }, cfg.providerId)
-        .then(async (removed) => {
-          // The retired identity's sidecar route is now an orphan pointing at a
-          // dead loopback port: the picker would list a provider that cannot
-          // dispatch. Sweep it alongside the current id.
-          let swept = removed
-          if (cfg.providerId !== LEGACY_NAME) {
-            swept = (await removeProviderRoute({ settings: sctx.settings! }, LEGACY_NAME)) || swept
-          }
-          if (swept) logger.info(`dsh-opencode-free: removed stale sidecar route(s) from llm-pi-ai settings`)
+        .then((swept) => {
+          if (swept) logger.info(`dsh-freetap: removed stale sidecar route(s) from llm-pi-ai settings`)
         })
         .catch((err) => {
-          logger.warn(`dsh-opencode-free: stale route cleanup failed: ${err instanceof Error ? err.message : String(err)}`)
+          logger.warn(`dsh-freetap: stale route cleanup failed: ${err instanceof Error ? err.message : String(err)}`)
         })
     })) as unknown as Promise<unknown>
   }
@@ -241,9 +223,9 @@ function applyAdapter(
   return { ready }
 }
 
-function applySidecar(ctx: PluginContext, config: DshOpencodeFreeConfig): { ready: Promise<ReadyInfo> } {
+function applySidecar(ctx: PluginContext, config: DshFreetapConfig): { ready: Promise<ReadyInfo> } {
   const cfg = resolveConfig(config)
-  const paths = configPaths(join(homedir(), '.dsh-opencode-free'))
+  const paths = configPaths(pluginDataDir())
   const logger = ctx.logger
 
   let agent: AgentProcess | null = null
@@ -303,7 +285,7 @@ function applySidecar(ctx: PluginContext, config: DshOpencodeFreeConfig): { read
       }
       await new Promise((r) => setTimeout(r, 300))
     }
-    logger.warn('dsh-opencode-free: catalog still pending after timeout; registering whatever the agent exposes now')
+    logger.warn('dsh-freetap: catalog still pending after timeout; registering whatever the agent exposes now')
   }
 
   async function refreshModels(info: ReadyInfo, token: string, { waitReady = false } = {}): Promise<void> {
@@ -323,10 +305,10 @@ function applySidecar(ctx: PluginContext, config: DshOpencodeFreeConfig): { read
           models,
         )
       } else {
-        logger.warn('dsh-opencode-free: credentials/settings services unavailable; provider route not registered')
+        logger.warn('dsh-freetap: credentials/settings services unavailable; provider route not registered')
       }
     } catch (err) {
-      logger.warn(`dsh-opencode-free: model refresh failed: ${err instanceof Error ? err.message : String(err)}`)
+      logger.warn(`dsh-freetap: model refresh failed: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
@@ -351,13 +333,13 @@ function applySidecar(ctx: PluginContext, config: DshOpencodeFreeConfig): { read
       onLog,
     })
     agent.on('exit-restart', (delay, crashes) => {
-      logger.warn(`dsh-opencode-free: agent exited unexpectedly; restarting in ${delay}ms (attempt ${crashes})`)
+      logger.warn(`dsh-freetap: agent exited unexpectedly; restarting in ${delay}ms (attempt ${crashes})`)
     })
     agent.on('circuit-tripped', (crashes) => {
-      logger.error(`dsh-opencode-free: agent crashed ${crashes} times consecutively; giving up`)
+      logger.error(`dsh-freetap: agent crashed ${crashes} times consecutively; giving up`)
     })
     agent.on('state', (state) => {
-      if (state === 'ready') logger.info('dsh-opencode-free: agent ready')
+      if (state === 'ready') logger.info('dsh-freetap: agent ready')
     })
     const info = await agent.start()
     readyResolve(info)
@@ -367,7 +349,7 @@ function applySidecar(ctx: PluginContext, config: DshOpencodeFreeConfig): { read
   }
 
   void startOnce().catch((err) => {
-    logger.error(`dsh-opencode-free: failed to start agent: ${err instanceof Error ? err.message : String(err)}`)
+    logger.error(`dsh-freetap: failed to start agent: ${err instanceof Error ? err.message : String(err)}`)
   })
 
   // Register disposer on the plugin fiber so reload/unload/shutdown reaps the
@@ -400,7 +382,7 @@ function applySidecar(ctx: PluginContext, config: DshOpencodeFreeConfig): { read
  * build; then a bare name on PATH.
  */
 export function defaultAgentPath(): string {
-  const bin = 'dsh-opencode-free-agent'
+  const bin = 'dsh-freetap-agent'
   const exe = process.platform === 'win32' ? `${bin}.exe` : bin
   const here = __dirnameSafe()
   for (const sibling of [
@@ -423,5 +405,5 @@ function __dirnameSafe(): string {
 }
 
 export { AgentProcess } from './agent-process.ts'
-export { configPaths, ensureToken, resolveConfig, writeAgentConfig, type DshOpencodeFreeConfig } from './config.ts'
+export { configPaths, ensureToken, resolveConfig, writeAgentConfig, type DshFreetapConfig } from './config.ts'
 export { fetchHealth, fetchModels, registerProvider, providerBaseURL, toPiAiModels, type DshSeams } from './provider.ts'

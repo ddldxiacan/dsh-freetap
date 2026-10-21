@@ -121,7 +121,7 @@ export interface PoolStatusView {
 }
 
 /** The bridge prefix (same-origin, loopback-only on the host). */
-const BRIDGE_PREFIX = '/api/dsh-opencode-free/ip-pool'
+const BRIDGE_PREFIX = '/api/dsh-freetap/ip-pool'
 
 /**
  * The field inside the served entry that holds the editable section: the

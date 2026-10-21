@@ -1,4 +1,4 @@
-// Package obs ports the dsh-opencode-free-needed subset of opencode2api
+// Package obs ports the dsh-freetap-needed subset of opencode2api
 // observability.go: structured slog setup, request recovery middleware, and
 // the SSE frame encoder. The LogHub ring buffer and SecretRedactor are not
 // ported -- the agent runs as a child process whose stdout the plugin pipes.
@@ -13,7 +13,7 @@ import (
 	"os"
 	"strings"
 
-	"dsh-opencode-free/agent/internal/catalog"
+	"dsh-freetap/agent/internal/catalog"
 )
 
 // NewLogger builds the structured JSON logger on stderr (stdout is reserved

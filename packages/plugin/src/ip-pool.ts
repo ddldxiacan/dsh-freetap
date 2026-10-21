@@ -12,11 +12,11 @@
  * knob, including enabled itself.
  */
 
-import type { DshOpencodeFreeConfig } from './config.ts'
+import type { DshFreetapConfig } from './config.ts'
 
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 
+import { dataDir } from './data-dir.ts'
 import { ExitPool, gradeOf, type ExitNode } from './pool/pool.ts'
 import type { UndiciSeam } from './pool/dispatcher.ts'
 import type { AdmissionDeps } from './pool/admission.ts'
@@ -25,11 +25,6 @@ import { RefillScheduler } from './pool/refill.ts'
 import { SubscriptionFetcher } from './pool/subscription-fetcher.ts'
 import { SingBoxSupervisor } from './pool/singbox.ts'
 import { createRotateDelegate, setRotateDelegate } from './pool/rotate.ts'
-
-/** Data dir shared with the catalog cache (config.ts convention). */
-function dataDir(): string {
-  return join(homedir(), '.dsh-opencode-free')
-}
 
 /** Parse one manual proxy string into an exit id + protocol, or null.
  *
@@ -63,7 +58,7 @@ export function parseManualProxy(
  *  with unknown health; the periodic/probe layer (IP-2) fills it in. Pinned
  *  nodes are admitted even without admission data — the user vouches for
  *  them (docs/ip-pool.md 3.1/4.5). */
-export function buildPoolFromConfig(config: DshOpencodeFreeConfig): ExitPool {
+export function buildPoolFromConfig(config: DshFreetapConfig): ExitPool {
   const pool = new ExitPool()
   syncManualExits(pool, config.ipPool, { initial: true })
   return pool
@@ -88,7 +83,7 @@ export function buildPoolFromConfig(config: DshOpencodeFreeConfig): ExitPool {
  */
 export function syncManualExits(
   pool: ExitPool,
-  ipPool: DshOpencodeFreeConfig['ipPool'],
+  ipPool: DshFreetapConfig['ipPool'],
   options: { initial?: boolean } = {},
 ): void {
   const wanted = new Map<string, { id: string; protocol: 'http' | 'socks5' }>()
@@ -159,7 +154,7 @@ export interface IpPoolRuntime {
   refill: RefillScheduler | null
   /** Hot-apply one committed settings value onto the live runtime (docs §5.1).
    *  Every knob lands without restart; enabled toggles the dispatcher. */
-  reconfigure(next: DshOpencodeFreeConfig): Promise<void>
+  reconfigure(next: DshFreetapConfig): Promise<void>
   /** Enqueue a probe of every pool exit against the probe models (bridge
    *  /probe scope 'all', docs §5.3). Returns the queue depth after enqueue. */
   probeAll(): Promise<number>
@@ -182,7 +177,7 @@ export interface IpPoolRuntime {
  * later), it only keeps the dispatcher uninstalled.
  */
 export async function startIpPool(
-  config: DshOpencodeFreeConfig,
+  config: DshFreetapConfig,
   logger: { info(message: string): void; warn(message: string): void },
 ): Promise<IpPoolRuntime | null> {
   const ipPool = config.ipPool ?? {}
@@ -192,7 +187,7 @@ export async function startIpPool(
   try {
     undici = (await import('undici')) as UndiciSeam
   } catch (err) {
-    logger.warn(`dsh-opencode-free: undici unavailable; exit routing disabled (${err instanceof Error ? err.message : String(err)})`)
+    logger.warn(`dsh-freetap: undici unavailable; exit routing disabled (${err instanceof Error ? err.message : String(err)})`)
     return null
   }
 
@@ -278,7 +273,7 @@ export async function startIpPool(
         if (!installer.enabled && current.enabled !== false && pool.snapshot().total > 0) {
           installer.install()
           if (installer.enabled) {
-            logger.info('dsh-opencode-free: first free exits admitted — exit routing engaged')
+            logger.info('dsh-freetap: first free exits admitted — exit routing engaged')
           }
         }
       })
@@ -314,7 +309,7 @@ export async function startIpPool(
   if (pool.snapshot().total > 0) {
     installer.install()
   } else {
-    logger.warn('dsh-opencode-free: ipPool enabled but no exits configured; staying direct until settings add exits')
+    logger.warn('dsh-freetap: ipPool enabled but no exits configured; staying direct until settings add exits')
   }
   applyConfig()
 
@@ -408,7 +403,7 @@ export async function startIpPool(
     prober,
     get subscriptions() { return subscriptions },
     get refill() { return refill },
-    async reconfigure(next: DshOpencodeFreeConfig) {
+    async reconfigure(next: DshFreetapConfig) {
       const wasEnabled = config.ipPool?.enabled !== false
       // splice the new ipPool section into the config object the runtime closes over
       config.ipPool = next.ipPool
@@ -425,13 +420,13 @@ export async function startIpPool(
       if (enable && !installer.enabled && pool.snapshot().total > 0) {
         installer.install()
         if (installer.enabled) {
-          logger.info('dsh-opencode-free: exit routing recovered — global dispatcher is free again (R1)')
+          logger.info('dsh-freetap: exit routing recovered — global dispatcher is free again (R1)')
         }
       } else if (!enable && installer.enabled) {
         installer.disable()
       }
       if (wasEnabled !== enable) {
-        logger.info(`dsh-opencode-free: ip pool ${enable ? 'enabled' : 'disabled'} via settings (live)`)
+        logger.info(`dsh-freetap: ip pool ${enable ? 'enabled' : 'disabled'} via settings (live)`)
       }
     },
     probeAll,

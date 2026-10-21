@@ -90,13 +90,13 @@ var PoolRoutingDispatcher = class {
 			}
 			return agent;
 		} catch (err) {
-			this.#logger?.warn(`dsh-opencode-free: failed to build proxy agent for ${exitId}: ${err instanceof Error ? err.message : String(err)}`);
+			this.#logger?.warn(`dsh-freetap: failed to build proxy agent for ${exitId}: ${err instanceof Error ? err.message : String(err)}`);
 			return null;
 		}
 	}
 	dispatch(options, handler) {
 		if (this.#closed) {
-			handler.onResponseError?.({}, /* @__PURE__ */ new Error("dsh-opencode-free: routing dispatcher closed"));
+			handler.onResponseError?.({}, /* @__PURE__ */ new Error("dsh-freetap: routing dispatcher closed"));
 			return false;
 		}
 		const host = normalizeHost(String(options.origin ?? ""));
@@ -156,7 +156,7 @@ var PoolRoutingDispatcher = class {
 			classified = true;
 			pool.recordPassiveTransport(exitId);
 			pool.rerouteSession(session);
-			const reason = /* @__PURE__ */ new Error("dsh-opencode-free: exit response silence");
+			const reason = /* @__PURE__ */ new Error("dsh-freetap: exit response silence");
 			if (typeof handler.onResponseError === "function") handler.onResponseError.call(handler, liveController ?? {}, reason);
 			liveController?.abort?.(reason);
 		};

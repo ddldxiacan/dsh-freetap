@@ -1,15 +1,15 @@
 <div align="center">
 
-# dsh-opencode-free
+# dsh-freetap
 
 **在 DSH（DeepSeek Harness）里原生使用 OpenCode Zen 的免费匿名模型。**
 
 无需 API Key。无需注册。无需额外进程。
 
-[![npm](https://img.shields.io/npm/v/@dsh-opencode-free%2Fdsh-plugin)](https://www.npmjs.com/package/@dsh-opencode-free/dsh-plugin)
-[![license](https://img.shields.io/npm/l/@dsh-opencode-free%2Fdsh-plugin)](https://github.com/ddldxiacan/dsh-opencode-free/blob/master/LICENSE)
+[![npm](https://img.shields.io/npm/v/dsh-freetap)](https://www.npmjs.com/package/dsh-freetap)
+[![license](https://img.shields.io/npm/l/dsh-freetap)](https://github.com/ddldxiacan/dsh-freetap/blob/master/LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen)](https://nodejs.org)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-blue)](https://github.com/ddldxiacan/dsh-opencode-free)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-blue)](https://github.com/ddldxiacan/dsh-freetap)
 
 [English](README.md) | 简体中文
 
@@ -17,19 +17,14 @@
 
 ---
 
-dsh-opencode-free 会向 DSH 注册一个原生的 `LlmAdapter`，直接流式对接
+dsh-freetap 会向 DSH 注册一个原生的 `LlmAdapter`，直接流式对接
 [OpenCode Zen](https://opencode.ai/zen) 的**匿名免费通道**——也就是
-OpenCode 官方 CLI 无需登录即可使用的那批免费模型，它们会以 `dsh-opencode-free`
+OpenCode 官方 CLI 无需登录即可使用的那批免费模型，它们会以 `dsh-freetap`
 这个常规 provider 出现在你的 DSH 模型选择器里。
 
 插件发出的请求与 OpenCode CLI 的流量完全同形（相同的 User-Agent、相同的
 关联请求头），模型目录通过三级回退链保持新鲜。不用登录任何账号，也不用
 自己部署任何东西。
-
-> **从 `opencode2dsh` 升级？** 本项目已改名。插件现在以
-> `@dsh-opencode-free/dsh-plugin` 发布，provider、设置条目与数据目录一并换成新名字。
-> 已保存的 IP 池设置与旧的 `~/.opencode2dsh` 缓存在首次启动时会被自动复制一次，
-> 详见[从 opencode2dsh 改名](#从-opencode2dsh-改名)。
 
 ## 特性
 
@@ -47,10 +42,10 @@ OpenCode 官方 CLI 无需登录即可使用的那批免费模型，它们会以
 从预构建的 Release 安装，无需构建步骤，也不需要工具链。
 
 ```sh
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-opencode-free-dsh-plugin-0.4.3.tgz --config.strict-dep-builds=false
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz --config.strict-dep-builds=false
 ```
 
-就这一条，退出码 0。然后**重启 DSH**，在模型选择器的 **dsh-opencode-free** 分组里挑模型即可。
+就这一条，退出码 0。然后**重启 DSH**，在模型选择器的 **dsh-freetap** 分组里挑模型即可。
 
 环境要求：DSH（DeepSeek Harness）0.1.7 及以上、带 web profile；Node.js ≥ 20（DSH 能跑就满足）；
 出站 HTTPS 需可达 `opencode.ai` 与 `models.dev`。
@@ -87,11 +82,11 @@ dsh plugin --profile web add <同一个地址> --allow-build='!@google/genai' --
 用显式的先移除、再安装恢复：
 
 ```sh
-dsh plugin --profile web remove @dsh-opencode-free/dsh-plugin
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-opencode-free-dsh-plugin-0.4.3.tgz --config.strict-dep-builds=false
+dsh plugin --profile web remove dsh-freetap
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz --config.strict-dep-builds=false
 ```
 
-**确认真的注册上了**：profile 的 `package.json` 里，`@dsh-opencode-free/dsh-plugin` 必须出现在
+**确认真的注册上了**：profile 的 `package.json` 里，`dsh-freetap` 必须出现在
 `dsh.profile.bundles` 下，而不只是 `dependencies` 里。
 
 ### 在可视化界面里安装（推荐给不用命令行的用户）
@@ -99,7 +94,7 @@ dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/rel
 **设置 → 插件 → 安装**，把 tarball 链接粘进去：
 
 ```
-https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-opencode-free-dsh-plugin-0.4.3.tgz
+https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz
 ```
 
 第一次安装**一定会先失败一次**，这是设计好的，不是出错：
@@ -111,7 +106,7 @@ https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-ope
 这条路径**不会**踩到下面命令行那个「重试变成静默失败」的坑：界面在每次失败后会把
 `package.json` 和 `pnpm-lock.yaml` 还原，所以重试仍然算作「新依赖」，能够正常注册成 bundle。
 我在真实 profile 上完整复现过：先失败 → 允许 → 重试成功 → `dsh.profile.bundles` 里出现
-`@dsh-opencode-free/dsh-plugin`，版本 0.4.3。
+`dsh-freetap`，版本 0.5.0。
 
 如果你**关掉了**那个弹窗、稍后又在界面上点了一次安装：它依然会再次失败并重新弹出授权区域
 （不会假装成功），照上面点「允许并重试」即可。
@@ -121,7 +116,7 @@ https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-ope
 **直接从 GitHub 安装**（不经过 registry）：
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap --config.strict-dep-builds=false
 ```
 
 这条路径之所以可用，是因为仓库根本身就是那个可安装的插件：它带着 `dsh` 清单，
@@ -130,16 +125,16 @@ git 依赖的 prepare 脚本——所以把构建产物一并提交，才让这�
 需要稳定版本时建议锁定 tag：
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free#v0.4.3 --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap#v0.5.0 --config.strict-dep-builds=false
 ```
 
 **从 npm 安装**（已发布版本）：
 
 ```sh
-dsh plugin --profile web add @dsh-opencode-free/dsh-plugin
+dsh plugin --profile web add dsh-freetap
 ```
 
-**验证**：重启 `dsh web`，打开模型选择器，在 **dsh-opencode-free** 分组里选模型即可。
+**验证**：重启 `dsh web`，打开模型选择器，在 **dsh-freetap** 分组里选模型即可。
 
 ### 更新
 
@@ -148,8 +143,8 @@ dsh plugin --profile web add @dsh-opencode-free/dsh-plugin
 **Release tarball** —— 用带版本号的那个资产，不要用 `latest`：
 
 ```sh
-# 把 0.4.2 换成你要升到的版本
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.2/dsh-opencode-free-dsh-plugin-0.4.2.tgz
+# 把 0.5.0 换成你要升到的版本
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz
 ```
 
 不带版本号的 `releases/latest/download/...` 地址**无法**更新已安装的版本：pnpm 早已把该
@@ -160,25 +155,25 @@ URL 连同完整性哈希固定进 `pnpm-lock.yaml`，同一个 URL 会被判为
 直接用带版本的地址，后者即使在旧版本上也能生效）：
 
 ```sh
-dsh plugin --profile web remove @dsh-opencode-free/dsh-plugin
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
+dsh plugin --profile web remove dsh-freetap
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/latest/download/dsh-freetap.tgz
 ```
 
 **git 安装**：跟随 master（git 依赖每次都会重新解析）：
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap --config.strict-dep-builds=false
 ```
 
 **npm 安装**：
 
 ```sh
-dsh plugin --profile web add @dsh-opencode-free/dsh-plugin@latest
+dsh plugin --profile web add dsh-freetap@latest
 ```
 
 然后重启 DSH。确认新版本是否生效：比对 profile 里
 `node_modules/<包名>/package.json` 的版本，并查看健康快照
-`~/.dsh-opencode-free/adapter-status.json`。
+`~/.dsh-freetap/adapter-status.json`。
 
 如果某次更新后插件装在 `node_modules` 里却始终不加载，那就是[安装](#安装)一节讲的
 `ERR_PNPM_IGNORED_BUILDS` 那个坑：先 `remove` 再 `add`，让它重新算作新依赖，
@@ -187,22 +182,22 @@ DSH 才会把它注册为 bundle。
 ## 配置
 
 默认配置开箱即用。需要覆盖时，编辑 profile 的 `cordis.patch.yml`。
-其中 `name` 必须是你实际安装的那个包名：git 安装用 `dsh-opencode-free`，
-tarball 或 npm 安装用 `@dsh-opencode-free/dsh-plugin`。
+其中 `name` 必须是你实际安装的那个包名：git 安装、release tarball 与 npm
+安装现在都是同一个名字 `dsh-freetap`。
 
 ```yaml
-- id: dsh-opencode-free
-  name: dsh-opencode-free   # 或 '@dsh-opencode-free/dsh-plugin'
+- id: dsh-freetap
+  name: dsh-freetap
   config:
     mode: adapter        # adapter（默认）| sidecar
-    providerId: dsh-opencode-free
+    providerId: dsh-freetap
     refreshSeconds: 300  # 目录刷新周期（秒）
 ```
 
 | 配置项 | 默认值 | 说明 |
 | --- | --- | --- |
 | `mode` | `adapter` | `adapter`：原生 LlmAdapter 直连 Zen。`sidecar`：旧版本地 agent 模式，不随包发行——请从 `legacy/agent` 自行构建并通过 `agentPath` 指定。 |
-| `providerId` | `dsh-opencode-free` | 在 DSH 中显示的 provider 名称。 |
+| `providerId` | `dsh-freetap` | 在 DSH 中显示的 provider 名称。 |
 | `refreshSeconds` | `300` | 实时目录刷新间隔；定价元数据每 24 小时刷新。 |
 | `agentPath` | 自动解析 | 仅 sidecar：agent 二进制路径。 |
 | `agentArgs` | — | 仅 sidecar：传给 agent 的额外 CLI 参数。 |
@@ -242,7 +237,7 @@ https://opencode.ai/zen/v1        ← Authorization: Bearer public
 插件在每轮刷新后写入健康快照：
 
 ```
-~/.dsh-opencode-free/adapter-status.json
+~/.dsh-freetap/adapter-status.json
 ```
 
 ```json
@@ -259,7 +254,7 @@ https://opencode.ai/zen/v1        ← Authorization: Bearer public
 | --- | --- |
 | `403 FreeTierError` / "OpenCode's free tier can only be used from within OpenCode" | 上游限制免费通道的客户端，插件会保留该说明；这不是个人 API 密钥错误。请使用上游支持的 OpenCode 客户端或正式 API 服务。 |
 | 启动页报 `Failed to load plugins … list slot "plugins.item" requires options.id`，或 IP 池条目没有配置页 | DSH 早于 0.1.7 的插件页契约。升级 DSH 到 0.1.7（推荐最新）；页面挂载门控是 `configForms.whileServed`，0.1.6 及更早上整页不出现，模型路由不受影响。 |
-| 安装插件后 DSH 0.1.7/0.2 无法启动，报 `pending … settingsScope` | 更新插件到 0.3.5；DSH 0.2 的 IP 池设置在插件页的 dsh-opencode-free 条目里。 |
+| 安装插件后 DSH 0.1.7/0.2 无法启动，报 `pending … settingsScope` | 更新插件到 0.3.5；DSH 0.2 的 IP 池设置在插件页的 dsh-freetap 条目里。 |
 | 只有 3 个模型 | 启动时网络未就绪，重试会在约 1 分钟内补齐；看 `adapter-status.json` 里的 `lastError`。 |
 | `lastError: "fetch failed"` 持续出现 | 出站 HTTPS 到 `opencode.ai` 被拦截；检查代理/VPN 规则。 |
 | 对话中报限流错误（`429 … Endpoint is unavailable`） | 匿名通道按 IP 限额，免费模型竞争大。[#51](https://github.com/FishBottle7/opencode2dsh/issues/51) 修复后，插件的 provider 重试策略会静默扛过 429 突发（8 次重试、约 1s→20s 退避、每步最坏约 90s），不再直接抛给用户；仍被打满时可降低思考强度、换一个竞争较小的 `-free` 模型，或在插件设置页开启 IP 池（多出口轮换）。 |
@@ -267,33 +262,6 @@ https://opencode.ai/zen/v1        ← Authorization: Bearer public
 | Muse 报 `REGION_BLOCKED` / "This model is not available in your country" | Zen 不向当前网络地区提供该模型。插件 0.3.5 保留上游解释；旧版会把这个 403 误报为 API 密钥无效。匿名通道不需要个人密钥，可使用当前地区可用的模型。 |
 | 连接 `127.0.0.1:*` 报错 | 残留的 sidecar 路由遮蔽了 adapter；插件 ≥ 0.2.1 启动时会自动清理。 |
 | 安装时报 `ERR_PNPM_IGNORED_BUILDS` | `pi-ai` 的传递依赖（`@google/genai`、`protobufjs`）带构建脚本，运行时并不需要。在安装命令后加 `--config.strict-dep-builds=false`，或在 Web 界面点「允许这些脚本并重试」。别直接重跑失败的裸 `add`——见[安装](#安装)。 |
-
-## 从 opencode2dsh 改名
-
-本项目原名 **opencode2dsh**。改名已完成：npm 包、DSH provider id、设置条目与
-数据目录全部改用新名字 `dsh-opencode-free`。
-
-升级是自动的。更新后首次启动时，插件会从旧名字把状态复制过来，只复制一次，
-且不删除任何东西：
-
-| 状态 | 旧位置 | 新位置 |
-| --- | --- | --- |
-| 缓存、健康快照、sidecar token | `~/.opencode2dsh/` | `~/.dsh-opencode-free/` |
-| 已保存的 IP 池设置 | `~/.dsh/settings.yaml` 的 `opencode2dsh:` 段 | `dsh-opencode-free:` 段 |
-
-迁移**刻意不做**两件事：
-
-- **绝不删除或移动旧状态。** 想回退旧版本仍然可用，迁移失败也可以在下次启动重试。
-- **绝不覆盖你已在新名字下设置的值。** 只复制新段里缺失的键，已经配置过的一律以你的为准。
-
-升级后模型选择器里显示为 **dsh-opencode-free**。**已保存的 IP 池设置会在第二次启动时生效**：
-Loader 在组合每次启动时就会解析该条目的 volatile `ipPool` 值，所以那次启动期间复制的设置
-要到下一次启动才被读到；缓存与健康文件则立即生效。如果某次切换发生在本改名之前，
-DSH 的**设置 → 插件**里可能还留着一个 `opencode2dsh` 条目，手动移除即可
-（sidecar 安装遗留的 `opencode2dsh` 孤儿 provider 路由会在启动时自动清理）。
-
-如果你宁可重新开始而不迁移，在升级前删掉 `~/.opencode2dsh/` 与
-`~/.dsh/settings.yaml` 里的 `opencode2dsh:` 段即可，插件会以默认值启动。
 
 ## 安全性
 
@@ -304,8 +272,8 @@ DSH 的**设置 → 插件**里可能还留着一个 `opencode2dsh` 条目，手
 ## 开发
 
 ```sh
-git clone https://github.com/ddldxiacan/dsh-opencode-free.git
-cd dsh-opencode-free/packages/plugin
+git clone https://github.com/ddldxiacan/dsh-freetap.git
+cd dsh-freetap/packages/plugin
 pnpm install
 pnpm typecheck && pnpm test
 pnpm build                    # 打包到 lib/

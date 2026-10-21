@@ -1,9 +1,9 @@
-# dsh-opencode-free DSH plugin — bundle patch: insert the plugin row (deployment-global).
+# dsh-freetap DSH plugin — bundle patch: insert the plugin row (deployment-global).
 #
 # Defaults need no edits: adapter mode (the shipped shape) registers a native
 # LlmAdapter straight into dsh-llm — no key, no child process, no local port.
 # Override any option via the config object below (see src/config.ts).
 - insert:
-    - id: dsh-opencode-free
-      name: '@dsh-opencode-free/dsh-plugin'
+    - id: dsh-freetap
+      name: 'dsh-freetap'
       config: {}

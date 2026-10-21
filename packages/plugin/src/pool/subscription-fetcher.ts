@@ -188,11 +188,11 @@ export class SubscriptionFetcher {
             pending.push(node)
           }
         }
-        this.#logger?.info(`dsh-opencode-free: subscription parsed ${report.nodes.length} node(s) (${report.detected}) from ${this.#redact(url)}`)
+        this.#logger?.info(`dsh-freetap: subscription parsed ${report.nodes.length} node(s) (${report.detected}) from ${this.#redact(url)}`)
       } catch (err) {
         if (this.#stopped) return
         lastError = err instanceof Error ? err.message : String(err)
-        this.#logger?.warn(`dsh-opencode-free: subscription fetch failed for ${this.#redact(url)}: ${lastError}`)
+        this.#logger?.warn(`dsh-freetap: subscription fetch failed for ${this.#redact(url)}: ${lastError}`)
       }
     }
     this.#state = {
@@ -237,11 +237,11 @@ export class SubscriptionFetcher {
             },
           }))
         if (tasks.length > 0) await this.#deps.prober.enqueueAll(tasks)
-        this.#logger?.info(`dsh-opencode-free: sing-box converted ${exits.length} encrypted node(s); ${this.#state.convertedAdmitted} admitted`)
+        this.#logger?.info(`dsh-freetap: sing-box converted ${exits.length} encrypted node(s); ${this.#state.convertedAdmitted} admitted`)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         this.#state.lastError = message
-        this.#logger?.warn(`dsh-opencode-free: sing-box conversion failed: ${message}`)
+        this.#logger?.warn(`dsh-freetap: sing-box conversion failed: ${message}`)
       }
     }
     // Plaintext nodes go through the trusted admission smoke (never the

@@ -1,6 +1,6 @@
 // Package catalog ports opencode2api models.go + model_metadata.go, trimmed to
 // the single anonymous Zen lane (Go tier, docs scraping and authenticated key
-// tiers are not ported), plus the dsh-opencode-free static fallback list (S3).
+// tiers are not ported), plus the dsh-freetap static fallback list (S3).
 package catalog
 
 import "strings"

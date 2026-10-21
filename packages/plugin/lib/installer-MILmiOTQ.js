@@ -1,4 +1,4 @@
-import { t as PoolRoutingDispatcher } from "./dispatcher-CB_rfVFN.js";
+import { t as PoolRoutingDispatcher } from "./dispatcher-Ct4hg8tS.js";
 
 //#region src/pool/installer.ts
 var RoutingInstaller = class {
@@ -52,7 +52,7 @@ var RoutingInstaller = class {
 		const foreign = this.#detectForeignDispatcher();
 		if (foreign !== null) {
 			this.#deferredReason = foreign;
-			this.#deps.logger?.warn(`dsh-opencode-free: exit routing ${foreign}`);
+			this.#deps.logger?.warn(`dsh-freetap: exit routing ${foreign}`);
 			return;
 		}
 		this.#deferredReason = null;
@@ -76,9 +76,9 @@ var RoutingInstaller = class {
 		if (typeof moduleFetch === "function" && globalThis.fetch !== moduleFetch) {
 			this.#savedGlobalFetch = globalThis.fetch;
 			globalThis.fetch = moduleFetch;
-			this.#deps.logger?.info("dsh-opencode-free: globalThis.fetch -> undici module fetch (built-in fetch bypasses the pool dispatcher otherwise)");
+			this.#deps.logger?.info("dsh-freetap: globalThis.fetch -> undici module fetch (built-in fetch bypasses the pool dispatcher otherwise)");
 		}
-		this.#deps.logger?.info("dsh-opencode-free: global dispatcher -> PoolRoutingDispatcher (exit routing enabled)");
+		this.#deps.logger?.info("dsh-freetap: global dispatcher -> PoolRoutingDispatcher (exit routing enabled)");
 	}
 	/** Restore the pre-install dispatcher and close ours. */
 	disable() {
@@ -104,7 +104,7 @@ var RoutingInstaller = class {
 			this.#deps.undici.setGlobalDispatcher(new this.#deps.undici.Agent());
 			restored = true;
 		} catch {}
-		this.#deps.logger?.info(restored ? `dsh-opencode-free: exit routing disabled; previous global dispatcher restored${restoreFetch ? " and globalThis.fetch restored" : ""}` : "dsh-opencode-free: exit routing disabled; no previous dispatcher to restore");
+		this.#deps.logger?.info(restored ? `dsh-freetap: exit routing disabled; previous global dispatcher restored${restoreFetch ? " and globalThis.fetch restored" : ""}` : "dsh-freetap: exit routing disabled; no previous dispatcher to restore");
 	}
 	/** Full teardown (plugin dispose): same as disable. */
 	dispose() {

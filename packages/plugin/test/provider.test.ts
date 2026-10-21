@@ -40,11 +40,11 @@ test('registerProvider stores token and writes the llm-pi-ai route', async () =>
   }
   await registerProvider(
     seams,
-    { providerId: 'dsh-opencode-free', apiKeyEnv: 'DSH_OPENCODE_FREE_TOKEN', port: 4567 },
+    { providerId: 'dsh-freetap', apiKeyEnv: 'DSH_FREETAP_TOKEN', port: 4567 },
     'tok',
     [{ id: 'm1', name: 'M1' }],
   )
-  assert.deepEqual(calls.credentials, [['DSH_OPENCODE_FREE_TOKEN', 'tok']])
+  assert.deepEqual(calls.credentials, [['DSH_FREETAP_TOKEN', 'tok']])
   assert.equal(calls.ops.length, 1)
   const first = calls.ops.at(0)
   assert.ok(first, 'expected one mutate call')
@@ -53,10 +53,10 @@ test('registerProvider stores token and writes the llm-pi-ai route', async () =>
   assert.ok(setOp, 'expected one set op')
   assert.equal(op.ns, 'llm-pi-ai')
   assert.equal(setOp.op, 'set')
-  assert.deepEqual(setOp.path, ['providers', 'dsh-opencode-free'])
+  assert.deepEqual(setOp.path, ['providers', 'dsh-freetap'])
   assert.equal(setOp.value.baseURL, providerBaseURL(4567))
   assert.equal(setOp.value.baseURL, 'http://127.0.0.1:4567/v1')
-  assert.equal(setOp.value.apiKeyEnv, 'DSH_OPENCODE_FREE_TOKEN')
+  assert.equal(setOp.value.apiKeyEnv, 'DSH_FREETAP_TOKEN')
   assert.equal(setOp.value.api, 'openai-completions')
   assert.deepEqual(setOp.value.models, [{ id: 'm1', name: 'M1' }])
 })
@@ -74,18 +74,18 @@ test('removeProviderRoute unsets the sidecar leftover only when present', async 
     logger: { info: () => {}, warn: () => {} },
   })
   // no namespace at all
-  assert.equal(await removeProviderRoute({ settings: makeSeams(undefined).settings }, 'dsh-opencode-free'), false)
+  assert.equal(await removeProviderRoute({ settings: makeSeams(undefined).settings }, 'dsh-freetap'), false)
   // namespace but no providers section
-  assert.equal(await removeProviderRoute({ settings: makeSeams(undefined).settings }, 'dsh-opencode-free'), false)
+  assert.equal(await removeProviderRoute({ settings: makeSeams(undefined).settings }, 'dsh-freetap'), false)
   // route present -> unset
-  const seams = makeSeams({ 'dsh-opencode-free': { baseURL: 'http://127.0.0.1:6865/v1' }, other: {} })
-  assert.equal(await removeProviderRoute({ settings: seams.settings }, 'dsh-opencode-free'), true)
+  const seams = makeSeams({ 'dsh-freetap': { baseURL: 'http://127.0.0.1:6865/v1' }, other: {} })
+  assert.equal(await removeProviderRoute({ settings: seams.settings }, 'dsh-freetap'), true)
   assert.equal(mutations.length, 1)
   const mutation = mutations[0]
   assert.ok(mutation)
   assert.equal(mutation.ns, 'llm-pi-ai')
   assert.equal(mutation.ops[0]?.op, 'unset')
-  assert.deepEqual(mutation.ops[0]?.path, ['providers', 'dsh-opencode-free'])
+  assert.deepEqual(mutation.ops[0]?.path, ['providers', 'dsh-freetap'])
   // other providers untouched: unset is path-scoped, verified by the op above
 })
 

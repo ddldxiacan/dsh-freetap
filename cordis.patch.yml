@@ -1,13 +1,13 @@
-# dsh-opencode-free DSH plugin — bundle patch: insert the plugin row (deployment-global).
+# dsh-freetap DSH plugin — bundle patch: insert the plugin row (deployment-global).
 #
 # `name` must be the package this repository installs as. The root package.json
-# is that package: a `github:ddldxiacan/dsh-opencode-free` install produces the
-# dependency `dsh-opencode-free`, and prebuilt output ships in
+# is that package: a `github:ddldxiacan/dsh-freetap` install produces the
+# dependency `dsh-freetap`, and prebuilt output ships in
 # packages/plugin/lib, so no build step runs on install.
 #
 # Defaults need no edits: the adapter registers into dsh-llm with no key and no
 # extra process. Override any option via the config object (src/config.ts).
 - insert:
-    - id: dsh-opencode-free
-      name: 'dsh-opencode-free'
+    - id: dsh-freetap
+      name: 'dsh-freetap'
       config: {}

@@ -1,6 +1,6 @@
 // Package pool ports opencode2api pool.go, trimmed to the transport pool and
 // the anonymous cooldown pool. The authenticated key-node machinery (nodePool,
-// upstreamNode, nodeCursor, proxy rebinding) is not ported: dsh-opencode-free never
+// upstreamNode, nodeCursor, proxy rebinding) is not ported: dsh-freetap never
 // configures upstream keys. The gray multi-IP rotation stays dormant by
 // default -- proxies=["direct"] is a single node, and MarkFailure then acts as
 // an honest single-exit cooldown/backoff (design.md 9.2).
@@ -21,8 +21,8 @@ import (
 	"syscall"
 	"time"
 
-	"dsh-opencode-free/agent/internal/config"
-	"dsh-opencode-free/agent/internal/ids"
+	"dsh-freetap/agent/internal/config"
+	"dsh-freetap/agent/internal/ids"
 )
 
 type ProxyTransport struct {

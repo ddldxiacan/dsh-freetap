@@ -9,8 +9,8 @@ name: Release
 # Artifacts produced:
 #   - packages/plugin/lib/ committed back to master (keeps `github:` installs working)
 #   - GitHub Release with two names for the same tarball:
-#       dsh-opencode-free-dsh-plugin.tgz            (version-free: first install)
-#       dsh-opencode-free-dsh-plugin-<version>.tgz  (tag-scoped: the update path)
+#       dsh-freetap.tgz            (version-free: first install)
+#       dsh-freetap-<version>.tgz  (tag-scoped: the update path)
 
 on:
   push:
@@ -99,8 +99,8 @@ jobs:
           #    silently kept the OLD version forever. A tag-scoped URL differs
           #    each release, so pnpm resolves it and the update lands.
           npm_tgz="$(ls ./*.tgz)"
-          cp "${npm_tgz}" "${RUNNER_TEMP}/dsh-opencode-free-dsh-plugin.tgz"
-          cp "${npm_tgz}" "${RUNNER_TEMP}/dsh-opencode-free-dsh-plugin-${{ steps.version.outputs.version }}.tgz"
+          cp "${npm_tgz}" "${RUNNER_TEMP}/dsh-freetap.tgz"
+          cp "${npm_tgz}" "${RUNNER_TEMP}/dsh-freetap-${{ steps.version.outputs.version }}.tgz"
           ls -la "${RUNNER_TEMP}"/*.tgz
 
       - name: Commit the prebuilt output and version bump
@@ -132,15 +132,15 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: dsh-opencode-free v${{ steps.version.outputs.version }}
+          name: dsh-freetap v${{ steps.version.outputs.version }}
           files: |
-            ${{ runner.temp }}/dsh-opencode-free-dsh-plugin.tgz
-            ${{ runner.temp }}/dsh-opencode-free-dsh-plugin-${{ steps.version.outputs.version }}.tgz
+            ${{ runner.temp }}/dsh-freetap.tgz
+            ${{ runner.temp }}/dsh-freetap-${{ steps.version.outputs.version }}.tgz
           generate_release_notes: true
           fail_on_unmatched_files: true
 
-      # npm is optional: it needs the @dsh-opencode-free scope to exist and an
-      # NPM_TOKEN secret with publish rights. Both absent is normal, so this step
+      # npm is optional: the package is unscoped, so publishing only needs an
+      # NPM_TOKEN secret with publish rights. Absent is normal, so this step
       # reports and skips instead of failing the release — the release tarball
       # and the git install already work without a registry.
       - name: Publish to npm

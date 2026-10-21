@@ -54,7 +54,7 @@ for (const scenario of [
     const result: { finish?: FinishReason } = {}
     const pending = (async () => {
       for await (const chunk of adapter.stream({
-        provider: 'dsh-opencode-free', model: scenario.model,
+        provider: 'dsh-freetap', model: scenario.model,
         messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
         signal: controller.signal,
       })) {

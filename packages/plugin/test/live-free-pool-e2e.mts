@@ -13,13 +13,13 @@
  * passive counters show the dispatch riding a pool exit.
  */
 import { startIpPool } from '../src/ip-pool.ts'
-import type { DshOpencodeFreeConfig } from '../src/config.ts'
+import type { DshFreetapConfig } from '../src/config.ts'
 import { ZenAdapter } from '../src/adapter/zen-adapter.ts'
 
 const t0 = Date.now()
 const log = (tag: string): void => console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s] ${tag}`)
 
-const config: DshOpencodeFreeConfig = {
+const config: DshFreetapConfig = {
   ipPool: {
     enabled: true,
     manual: [],            // production shape: NO manual proxies
@@ -76,7 +76,7 @@ let text = ''
 let finish: { kind: string; failure?: { message: string } } | null = null
 try {
   const stream = await adapter.stream({
-    model: 'big-pickle', provider: 'dsh-opencode-free',
+    model: 'big-pickle', provider: 'dsh-freetap',
     messages: [{ role: 'user', content: [{ type: 'text', text: '用一句话回答：你收到这条消息了吗？' }] }],
     temperature: 0, maxTokens: 128,
   } as never)

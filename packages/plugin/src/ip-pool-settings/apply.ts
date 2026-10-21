@@ -87,13 +87,13 @@ export function applyIpPoolSettings(
       void ensureRuntime()
         .then(() => controller.runtime?.reconfigure(controller.asConfig(controller.settings())))
         .catch((err) => {
-          logger.warn(`dsh-opencode-free: ip pool start failed: ${err instanceof Error ? err.message : String(err)}`)
+          logger.warn(`dsh-freetap: ip pool start failed: ${err instanceof Error ? err.message : String(err)}`)
         })
       return
     }
     if (rt !== null) {
       void rt.reconfigure(controller.asConfig(value)).catch((err) => {
-        logger.warn(`dsh-opencode-free: ip pool live re-apply failed: ${err instanceof Error ? err.message : String(err)}`)
+        logger.warn(`dsh-freetap: ip pool live re-apply failed: ${err instanceof Error ? err.message : String(err)}`)
       })
     }
   }
@@ -158,7 +158,7 @@ export function applyIpPoolSettings(
       for (const route of makeBridgeRoutes(handlers)) {
         disposers.push(bctx.webServer.register(route as never))
       }
-      logger.info(`dsh-opencode-free: ip-pool bridge mounted at ${IP_POOL_BRIDGE_PREFIX} (${disposers.length} routes)`)
+      logger.info(`dsh-freetap: ip-pool bridge mounted at ${IP_POOL_BRIDGE_PREFIX} (${disposers.length} routes)`)
       const maybeEffect = (bctx as { effect?: PluginContext['effect'] }).effect
       if (typeof maybeEffect === 'function') {
         maybeEffect.call(bctx, () => () => {
@@ -168,7 +168,7 @@ export function applyIpPoolSettings(
     })) as unknown as Promise<unknown>
   }
 
-  logger.info(`dsh-opencode-free: settings namespace "${IP_POOL_NAMESPACE}" served from the plugin's volatile Config — live apply via 设置 → 插件 → IP 池`)
+  logger.info(`dsh-freetap: settings namespace "${IP_POOL_NAMESPACE}" served from the plugin's volatile Config — live apply via 设置 → 插件 → IP 池`)
   const maybeEffect = (ctx as { effect?: PluginContext['effect'] }).effect
   if (typeof maybeEffect === 'function') {
     maybeEffect.call(ctx, () => () => {

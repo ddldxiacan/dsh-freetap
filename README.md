@@ -1,15 +1,15 @@
 <div align="center">
 
-# dsh-opencode-free
+# dsh-freetap
 
 **Free OpenCode Zen models, natively inside DSH (DeepSeek Harness).**
 
 No API key. No registration. No extra process.
 
-[![npm](https://img.shields.io/npm/v/@dsh-opencode-free%2Fdsh-plugin)](https://www.npmjs.com/package/@dsh-opencode-free/dsh-plugin)
-[![license](https://img.shields.io/npm/l/@dsh-opencode-free%2Fdsh-plugin)](https://github.com/ddldxiacan/dsh-opencode-free/blob/master/LICENSE)
+[![npm](https://img.shields.io/npm/v/dsh-freetap)](https://www.npmjs.com/package/dsh-freetap)
+[![license](https://img.shields.io/npm/l/dsh-freetap)](https://github.com/ddldxiacan/dsh-freetap/blob/master/LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen)](https://nodejs.org)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-blue)](https://github.com/ddldxiacan/dsh-opencode-free)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-blue)](https://github.com/ddldxiacan/dsh-freetap)
 
 English | [简体中文](README.zh-CN.md)
 
@@ -17,21 +17,15 @@ English | [简体中文](README.zh-CN.md)
 
 ---
 
-dsh-opencode-free registers a native DSH `LlmAdapter` that streams directly from
+dsh-freetap registers a native DSH `LlmAdapter` that streams directly from
 [OpenCode Zen](https://opencode.ai/zen)'s **anonymous free lane** — the same
 models OpenCode's own CLI uses without an account, served to your DSH model
-picker as a regular provider called `dsh-opencode-free`.
+picker as a regular provider called `dsh-freetap`.
 
 Requests leave your machine looking exactly like traffic from the OpenCode
 CLI (same user agent, same correlation headers), and the model catalog stays
 fresh through a three-tier fallback chain. There is nothing to log into and
 nothing to host.
-
-> **Upgrading from `opencode2dsh`?** This project was renamed. The plugin now
-> installs as `@dsh-opencode-free/dsh-plugin` with the provider, settings entry
-> and data directory all under the new name. Your saved IP-pool settings and the
-> old `~/.opencode2dsh` cache are copied once on first start — see
-> [Renamed from opencode2dsh](#renamed-from-opencode2dsh).
 
 ## Highlights
 
@@ -49,11 +43,11 @@ nothing to host.
 Installs from a prebuilt release, so no build step and no toolchain is needed.
 
 ```sh
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-opencode-free-dsh-plugin-0.4.3.tgz --config.strict-dep-builds=false
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz --config.strict-dep-builds=false
 ```
 
 That is the whole install — one command, exit code 0. Then **restart DSH** and
-pick a model from the **dsh-opencode-free** group in the model selector.
+pick a model from the **dsh-freetap** group in the model selector.
 
 Requirements: DSH (DeepSeek Harness) 0.1.7 or newer with a web profile, Node.js
 ≥ 20 (already present if DSH runs), and outbound HTTPS to `opencode.ai` and
@@ -98,11 +92,11 @@ in the output says so.
 Recover with an explicit remove + add:
 
 ```sh
-dsh plugin --profile web remove @dsh-opencode-free/dsh-plugin
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-opencode-free-dsh-plugin-0.4.3.tgz --config.strict-dep-builds=false
+dsh plugin --profile web remove dsh-freetap
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz --config.strict-dep-builds=false
 ```
 
-**Verify** it really registered: `@dsh-opencode-free/dsh-plugin` must appear
+**Verify** it really registered: `dsh-freetap` must appear
 under `dsh.profile.bundles` in the profile's `package.json`, not only under
 `dependencies`.
 
@@ -111,7 +105,7 @@ under `dsh.profile.bundles` in the profile's `package.json`, not only under
 **Settings → Plugins → Install**, then paste the tarball URL:
 
 ```
-https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-opencode-free-dsh-plugin-0.4.3.tgz
+https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz
 ```
 
 The first attempt **always fails once**. That is by design, not a bug:
@@ -125,7 +119,7 @@ This path does **not** hit the silent-retry trap described below: after every
 failed run the page restores `package.json` and `pnpm-lock.yaml`, so the retry
 still counts as a new dependency and registers as a profile bundle. Verified
 end to end on a real profile: fail → allow → retry succeeded, and
-`dsh.profile.bundles` gained `@dsh-opencode-free/dsh-plugin` at 0.4.3.
+`dsh.profile.bundles` gained `dsh-freetap` at 0.5.0.
 
 If you close that dialog and use the Install button again later, it fails again
 and re-opens the same approval section — it will not pretend to have succeeded.
@@ -136,7 +130,7 @@ Click "Allow these scripts and retry" and it goes through.
 **From GitHub directly** (no registry involved):
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap --config.strict-dep-builds=false
 ```
 
 This works because the repository root *is* the installable plugin: it carries
@@ -146,17 +140,17 @@ scripts for git dependencies — so shipping the build is what makes this path
 work. Pinning a tag is recommended for stability:
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free#v0.4.3 --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap#v0.5.0 --config.strict-dep-builds=false
 ```
 
 **From npm** (once the package is published):
 
 ```sh
-dsh plugin --profile web add @dsh-opencode-free/dsh-plugin
+dsh plugin --profile web add dsh-freetap
 ```
 
 **Verify**: restart `dsh web`, open the model picker, and pick a model from
-the **dsh-opencode-free** group.
+the **dsh-freetap** group.
 
 ### Updating
 
@@ -165,8 +159,8 @@ Pick the source you installed from; each updates in place.
 **Release tarball.** Use the tag-scoped asset, not the version-free one:
 
 ```sh
-# replace 0.4.2 with the release you are moving to
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.2/dsh-opencode-free-dsh-plugin-0.4.2.tgz
+# replace 0.5.0 with the release you are moving to
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/download/v0.5.0/dsh-freetap-0.5.0.tgz
 ```
 
 The version-free `releases/latest/download/...` URL does **not** update an
@@ -179,25 +173,25 @@ versioned asset, do the one-time move with an explicit remove + add (or the
 versioned URL, which works even then):
 
 ```sh
-dsh plugin --profile web remove @dsh-opencode-free/dsh-plugin
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
+dsh plugin --profile web remove dsh-freetap
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-freetap/releases/latest/download/dsh-freetap.tgz
 ```
 
 **git install**: follow master (a git spec re-resolves each time):
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free --config.strict-dep-builds=false
+dsh plugin --profile web add github:ddldxiacan/dsh-freetap --config.strict-dep-builds=false
 ```
 
 **npm install**:
 
 ```sh
-dsh plugin --profile web add @dsh-opencode-free/dsh-plugin@latest
+dsh plugin --profile web add dsh-freetap@latest
 ```
 
 Then restart DSH. To confirm the new version landed, compare the profile's
 `node_modules/<pkg>/package.json` with the release you expected, and check the
-health snapshot at `~/.dsh-opencode-free/adapter-status.json`.
+health snapshot at `~/.dsh-freetap/adapter-status.json`.
 
 If an update ever leaves the plugin installed but not loaded, it is the
 `ERR_PNPM_IGNORED_BUILDS` trap described under [Install](#install): remove and
@@ -206,22 +200,22 @@ re-add, so the package counts as new and DSH registers it as a bundle.
 ## Configuration
 
 Defaults work out of the box. Override via the profile's `cordis.patch.yml`.
-The `name` must be the package you installed as: `dsh-opencode-free` for a git
-install, `@dsh-opencode-free/dsh-plugin` for the tarball or npm.
+The `name` must be the package you installed as: `dsh-freetap` for a git
+install, for the release tarball and for npm alike — there is one name now.
 
 ```yaml
-- id: dsh-opencode-free
-  name: dsh-opencode-free   # or '@dsh-opencode-free/dsh-plugin'
+- id: dsh-freetap
+  name: dsh-freetap
   config:
     mode: adapter        # adapter (default) | sidecar
-    providerId: dsh-opencode-free
+    providerId: dsh-freetap
     refreshSeconds: 300  # catalog refresh cadence
 ```
 
 | Option | Default | Description |
 | --- | --- | --- |
 | `mode` | `adapter` | `adapter`: native LlmAdapter streaming straight from Zen. `sidecar`: legacy local-agent mode, not bundled — build the agent from `legacy/agent` and pass `agentPath`. |
-| `providerId` | `dsh-opencode-free` | Provider name shown in DSH. |
+| `providerId` | `dsh-freetap` | Provider name shown in DSH. |
 | `refreshSeconds` | `300` | Live catalog refresh interval. Pricing metadata refreshes every 24 h. |
 | `agentPath` | auto-resolved | Sidecar only: path to the agent binary. |
 | `agentArgs` | — | Sidecar only: extra CLI args for the agent. |
@@ -266,7 +260,7 @@ https://opencode.ai/zen/v1        ← Authorization: Bearer public
 The plugin writes a health snapshot after every refresh round:
 
 ```
-~/.dsh-opencode-free/adapter-status.json
+~/.dsh-freetap/adapter-status.json
 ```
 
 ```json
@@ -283,7 +277,7 @@ The plugin writes a health snapshot after every refresh round:
 | --- | --- |
 | `403 FreeTierError` / "OpenCode's free tier can only be used from within OpenCode" | The upstream restricts free-tier clients. The plugin preserves the explanation instead of reporting an invalid API key. Use the supported OpenCode client or an official API service. |
 | Boot screen shows `Failed to load plugins … list slot "plugins.item" requires options.id`, or the IP 池 entry has no configuration page | Your DSH predates the 0.1.7 Plugins page contract. Upgrade DSH to 0.1.7 (latest recommended). On 0.1.6 and older the page never mounts (it is gated on `configForms.whileServed`) — model routing is unaffected. |
-| DSH 0.1.7/0.2 cannot start after plugin installation (`pending … settingsScope`) | Upgrade the plugin to 0.3.5. On DSH 0.2, configure IP pooling through the installed dsh-opencode-free row on the Plugins page. |
+| DSH 0.1.7/0.2 cannot start after plugin installation (`pending … settingsScope`) | Upgrade the plugin to 0.3.5. On DSH 0.2, configure IP pooling through the installed dsh-freetap row on the Plugins page. |
 | Only 3 models | Startup fetch raced your network; retries land within ~1 min. Check `adapter-status.json` for `lastError`. |
 | `lastError: "fetch failed"` persisting | Outbound HTTPS to `opencode.ai` blocked; check proxy/VPN rules. |
 | Rate-limit errors in chat (`429 … Endpoint is unavailable`) | The anonymous lane is quota-per-IP and free models are contended. Since the fix for [#51](https://github.com/FishBottle7/opencode2dsh/issues/51) the plugin's provider retry policy rides out 429 bursts silently (8 retries, ~1s→20s backoff, ≈90s worst case per step) instead of surfacing them; when contention still wins, lower the reasoning effort, pick a less contended `-free` model, or enable IP pooling (multi-exit rotation) on the plugin settings page. |
@@ -291,40 +285,6 @@ The plugin writes a health snapshot after every refresh round:
 | Muse reports `REGION_BLOCKED` / "This model is not available in your country" | Zen has rejected the current network region for this model. Plugin 0.3.5 preserves that explanation; older versions mislabeled the same 403 as an invalid API key. The anonymous lane does not need a personal key. Use a model available in your region. |
 | Connection error to `127.0.0.1:*` | A stale sidecar route shadows the adapter; plugin ≥ 0.2.1 removes it at startup. |
 | Install fails with `ERR_PNPM_IGNORED_BUILDS` | A transitive dependency of `pi-ai` (`@google/genai`, `protobufjs`) has build scripts that are not needed at runtime. Add `--config.strict-dep-builds=false` to the install command, or click **Allow these scripts and retry** in the Web UI. Do not simply re-run a failed bare `add` — see [Install](#install). |
-
-## Renamed from opencode2dsh
-
-This project used to be called **opencode2dsh**. The rename is complete: the npm
-package, the DSH provider id, the settings entry and the data directory all use
-the new name `dsh-opencode-free`.
-
-Upgrading is automatic. On the first start after the update the plugin copies
-your state from the old name, once, without deleting anything:
-
-| State | Old location | New location |
-| --- | --- | --- |
-| Cache, health snapshot, sidecar token | `~/.opencode2dsh/` | `~/.dsh-opencode-free/` |
-| Saved IP-pool settings | `opencode2dsh:` section of `~/.dsh/settings.yaml` | `dsh-opencode-free:` section |
-
-Two things the migration deliberately does **not** do:
-
-- **It never deletes or moves the old state.** A downgrade keeps working, and a
-  failed migration can simply be retried on the next start.
-- **It never overwrites what you set under the new name.** Only keys missing
-  from the new section are copied; anything already configured there wins.
-
-After upgrading you will see the provider as **dsh-opencode-free** in the model
-picker. **Saved IP-pool settings appear on the second start**: the Loader
-resolves the entry's volatile `ipPool` value while composing a boot, so a copy
-made during that boot is read on the next one. The cache and health files take
-effect immediately. A deployment that cut over before this rename existed may
-still list a `opencode2dsh` entry under DSH's **Settings → Plugins**; remove that
-stale entry (an orphan `opencode2dsh` provider route left by a sidecar install is
-swept automatically at startup).
-
-If you prefer to start clean rather than migrate, delete `~/.opencode2dsh/` and
-the `opencode2dsh:` section of `~/.dsh/settings.yaml` before upgrading; the
-plugin then starts with defaults.
 
 ## Security
 
@@ -335,8 +295,8 @@ plugin then starts with defaults.
 ## Development
 
 ```sh
-git clone https://github.com/ddldxiacan/dsh-opencode-free.git
-cd dsh-opencode-free/packages/plugin
+git clone https://github.com/ddldxiacan/dsh-freetap.git
+cd dsh-freetap/packages/plugin
 pnpm install
 pnpm typecheck && pnpm test
 pnpm build                    # bundle to lib/

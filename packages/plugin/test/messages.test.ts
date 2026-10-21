@@ -17,7 +17,7 @@ function expectRole(message: PiMessage | undefined, role: PiMessage['role']): Pi
 }
 
 function options(overrides: Partial<HarnessGenerateOptions> = {}): HarnessGenerateOptions {
-  return { provider: 'dsh-opencode-free', model: 'qwen-free', messages: [], ...overrides }
+  return { provider: 'dsh-freetap', model: 'qwen-free', messages: [], ...overrides }
 }
 
 /** Run against an empty attachment store rooted at a temp DSH_HOME. */
@@ -148,7 +148,7 @@ test('assistant history replays text, thinking and tool calls with parsed argume
         { type: 'reasoning', text: 'internal scratch' },
         { type: 'tool-call', id: 't1', name: 'calc', arguments: '{"a":1}' },
       ],
-      source: { kind: 'model', provider: 'dsh-opencode-free', model: 'qwen-free' },
+      source: { kind: 'model', provider: 'dsh-freetap', model: 'qwen-free' },
     },
   ]
   const context = await toPiContext(options({ messages }))
@@ -531,7 +531,7 @@ test('assistant history preserves the Responses API for muse-spark models', asyn
         {
           role: 'assistant',
           content: [{ type: 'text', text: 'previous response' }],
-          source: { kind: 'model', provider: 'dsh-opencode-free', model: 'muse-spark-1.2-contributor-free' },
+          source: { kind: 'model', provider: 'dsh-freetap', model: 'muse-spark-1.2-contributor-free' },
         },
       ],
     }),

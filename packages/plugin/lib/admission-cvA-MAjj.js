@@ -1,6 +1,6 @@
-import { f as disguiseHeaders, h as stableID, m as randomID, p as opencodeUserAgent, r as ZEN_BASE_URL, u as canonicalSessionID } from "./catalog-CaaY1TXy.js";
-import { a as freeLaneGateTool, t as FREE_LANE_GATE_TOOL_NAMES } from "./messages-CbgXeWiR.js";
-import { n as exitProxyUri } from "./dispatcher-CB_rfVFN.js";
+import { f as disguiseHeaders, h as stableID, m as randomID, p as opencodeUserAgent, r as ZEN_BASE_URL, u as canonicalSessionID } from "./catalog-LZH3DaGR.js";
+import { a as freeLaneGateTool, t as FREE_LANE_GATE_TOOL_NAMES } from "./messages-CQuuRFeM.js";
+import { n as exitProxyUri } from "./dispatcher-Ct4hg8tS.js";
 
 //#region src/pool/pool.ts
 /** Quality grade from admission latency (GoProxy thresholds). */
@@ -489,7 +489,7 @@ async function admitCandidate(deps, candidate, options = {}) {
 	const probeHeaders = disguiseHeaders({
 		session: canonicalSessionID(`admission:${candidate.address}`),
 		request: randomID("req", 16),
-		project: stableID("prj", "dsh-opencode-free:default-project"),
+		project: stableID("prj", "dsh-freetap:default-project"),
 		parentSession: ""
 	});
 	let agent = null;
@@ -533,9 +533,9 @@ async function admitCandidate(deps, candidate, options = {}) {
 				authorization: "Bearer public",
 				"content-type": "application/json",
 				...disguiseHeaders({
-					session: canonicalSessionID("dsh-opencode-free:admission-smoke"),
+					session: canonicalSessionID("dsh-freetap:admission-smoke"),
 					request: randomID("req", 16),
-					project: stableID("prj", "dsh-opencode-free:admission"),
+					project: stableID("prj", "dsh-freetap:admission"),
 					parentSession: ""
 				}),
 				...probeHeaders
@@ -618,7 +618,7 @@ async function admitTrusted(deps, candidate, options = {}) {
 		...options.smokeModel !== void 0 ? { smokeModel: options.smokeModel } : {}
 	});
 	if (result.admitted) return result;
-	deps.logger?.warn(`dsh-opencode-free: trusted exit ${candidate.address} failed admission (${result.reason}); admitted with ${options.previous?.exitIP ? "previous" : "unknown"} exit facts`);
+	deps.logger?.warn(`dsh-freetap: trusted exit ${candidate.address} failed admission (${result.reason}); admitted with ${options.previous?.exitIP ? "previous" : "unknown"} exit facts`);
 	const previous = options.previous;
 	const measured = previous !== void 0 && previous.latencyMs > 0;
 	return {

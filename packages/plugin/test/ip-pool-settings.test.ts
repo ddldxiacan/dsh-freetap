@@ -15,8 +15,8 @@ import { buildStatusView, isTrustedBridgeRequest, makeBridgeHandlers, makeBridge
 
 test('ip-pool settings are served under the Loader entry id', () => {
   // DSH 0.1.7 derives the namespace from the loader entry, so it is
-  // 'dsh-opencode-free' — not a name the plugin registers for itself.
-  assert.equal(String(IP_POOL_NAMESPACE), 'dsh-opencode-free')
+  // 'dsh-freetap' — not a name the plugin registers for itself.
+  assert.equal(String(IP_POOL_NAMESPACE), 'dsh-freetap')
 })
 
 test('schema fills every default from an empty section', () => {

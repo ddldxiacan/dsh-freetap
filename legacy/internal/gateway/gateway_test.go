@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"dsh-opencode-free/agent/internal/catalog"
-	"dsh-opencode-free/agent/internal/config"
+	"dsh-freetap/agent/internal/catalog"
+	"dsh-freetap/agent/internal/config"
 )
 
 func discardLogger() *slog.Logger {

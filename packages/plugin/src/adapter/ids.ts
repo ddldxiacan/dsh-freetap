@@ -56,7 +56,7 @@ export function deriveRequestIDs(messages: Array<{ role: string; content: unknow
   return {
     session: canonicalSessionID(signal),
     request: randomID('req', 16),
-    project: stableID('prj', 'dsh-opencode-free:default-project'),
+    project: stableID('prj', 'dsh-freetap:default-project'),
     parentSession: '',
   }
 }

@@ -1,9 +1,8 @@
-import "./catalog-CaaY1TXy.js";
-import "./messages-CbgXeWiR.js";
-import "./dispatcher-CB_rfVFN.js";
-import { i as createRotateDelegate, n as normalizeSubscriptionUserAgent, o as setRotateDelegate } from "./subscription-defaults-DEuRqSU9.js";
-import { a as coarseScreenBatch, n as admitCandidate, o as ExitPool, r as admitTrusted, s as gradeOf } from "./admission-BZX24oAJ.js";
-import { homedir } from "node:os";
+import "./catalog-LZH3DaGR.js";
+import "./messages-CQuuRFeM.js";
+import "./dispatcher-Ct4hg8tS.js";
+import { a as createRotateDelegate, r as normalizeSubscriptionUserAgent, s as setRotateDelegate, t as dataDir } from "./data-dir-jQUgAPXb.js";
+import { a as coarseScreenBatch, n as admitCandidate, o as ExitPool, r as admitTrusted, s as gradeOf } from "./admission-cvA-MAjj.js";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
@@ -1384,7 +1383,7 @@ var SingBoxSupervisor = class {
 				break;
 			}
 		}
-		if (!ready) this.#options.logger?.warn("dsh-opencode-free: sing-box ports not ready in time; some converted nodes may be unreachable");
+		if (!ready) this.#options.logger?.warn("dsh-freetap: sing-box ports not ready in time; some converted nodes may be unreachable");
 		const exits = [];
 		for (const node of nodes) {
 			const port = portMap.get(nodeKeyOf(node));
@@ -1542,11 +1541,11 @@ var SubscriptionFetcher = class {
 				protocol: node.type
 			});
 			else pending.push(node);
-			this.#logger?.info(`dsh-opencode-free: subscription parsed ${report.nodes.length} node(s) (${report.detected}) from ${this.#redact(url)}`);
+			this.#logger?.info(`dsh-freetap: subscription parsed ${report.nodes.length} node(s) (${report.detected}) from ${this.#redact(url)}`);
 		} catch (err) {
 			if (this.#stopped) return;
 			lastError = err instanceof Error ? err.message : String(err);
-			this.#logger?.warn(`dsh-opencode-free: subscription fetch failed for ${this.#redact(url)}: ${lastError}`);
+			this.#logger?.warn(`dsh-freetap: subscription fetch failed for ${this.#redact(url)}: ${lastError}`);
 		}
 		this.#state = {
 			running: false,
@@ -1581,11 +1580,11 @@ var SubscriptionFetcher = class {
 				}
 			}));
 			if (tasks$1.length > 0) await this.#deps.prober.enqueueAll(tasks$1);
-			this.#logger?.info(`dsh-opencode-free: sing-box converted ${exits.length} encrypted node(s); ${this.#state.convertedAdmitted} admitted`);
+			this.#logger?.info(`dsh-freetap: sing-box converted ${exits.length} encrypted node(s); ${this.#state.convertedAdmitted} admitted`);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			this.#state.lastError = message;
-			this.#logger?.warn(`dsh-opencode-free: sing-box conversion failed: ${message}`);
+			this.#logger?.warn(`dsh-freetap: sing-box conversion failed: ${message}`);
 		}
 		if (this.#stopped) return;
 		const tasks = plaintext.filter((candidate) => !this.#deps.pool.has(candidate.address)).map((candidate) => ({
@@ -1637,10 +1636,6 @@ var SubscriptionFetcher = class {
 
 //#endregion
 //#region src/ip-pool.ts
-/** Data dir shared with the catalog cache (config.ts convention). */
-function dataDir() {
-	return join(homedir(), ".dsh-opencode-free");
-}
 /** Parse one manual proxy string into an exit id + protocol, or null.
 *
 * The host part is anchored in BOTH branches and the port is range-checked:
@@ -1751,10 +1746,10 @@ async function startIpPool(config, logger) {
 	try {
 		undici = await import("undici");
 	} catch (err) {
-		logger.warn(`dsh-opencode-free: undici unavailable; exit routing disabled (${err instanceof Error ? err.message : String(err)})`);
+		logger.warn(`dsh-freetap: undici unavailable; exit routing disabled (${err instanceof Error ? err.message : String(err)})`);
 		return null;
 	}
-	const { RoutingInstaller } = await import("./installer-BQBN6LVJ.js");
+	const { RoutingInstaller } = await import("./installer-MILmiOTQ.js");
 	const installer = new RoutingInstaller({
 		pool,
 		undici,
@@ -1815,7 +1810,7 @@ async function startIpPool(config, logger) {
 			refill.onAdmitted(() => {
 				if (!installer.enabled && current.enabled !== false && pool.snapshot().total > 0) {
 					installer.install();
-					if (installer.enabled) logger.info("dsh-opencode-free: first free exits admitted — exit routing engaged");
+					if (installer.enabled) logger.info("dsh-freetap: first free exits admitted — exit routing engaged");
 				}
 			});
 			refill.start();
@@ -1842,11 +1837,11 @@ async function startIpPool(config, logger) {
 	};
 	let fetcherActive = false;
 	if (pool.snapshot().total > 0) installer.install();
-	else logger.warn("dsh-opencode-free: ipPool enabled but no exits configured; staying direct until settings add exits");
+	else logger.warn("dsh-freetap: ipPool enabled but no exits configured; staying direct until settings add exits");
 	applyConfig();
 	const probeAll = async () => {
 		const models = probeModels.length > 0 ? probeModels : ["big-pickle"];
-		const { admitCandidate: admitCandidate$1, admitTrusted: admitTrusted$1 } = await import("./admission-C4sgUC2L.js");
+		const { admitCandidate: admitCandidate$1, admitTrusted: admitTrusted$1 } = await import("./admission-CO8QGH3z.js");
 		const tasks = pool.list().map((entry) => ({
 			exitId: entry.id,
 			kind: "probe-all",
@@ -1895,7 +1890,7 @@ async function startIpPool(config, logger) {
 		kind: "probe-exit",
 		run: async () => {
 			const models = probeModels.length > 0 ? [...probeModels] : ["big-pickle"];
-			const { admitCandidate: admitCandidate$1, admitTrusted: admitTrusted$1 } = await import("./admission-C4sgUC2L.js");
+			const { admitCandidate: admitCandidate$1, admitTrusted: admitTrusted$1 } = await import("./admission-CO8QGH3z.js");
 			for (const model of models) {
 				const verdict = entry.source === "free" ? await admitCandidate$1(admissionDeps, {
 					address: entry.id,
@@ -1958,9 +1953,9 @@ async function startIpPool(config, logger) {
 			setRotateDelegate(createRotateDelegate(pool, { maxAttempts: next.ipPool?.maxRotateAttempts ?? 3 }));
 			if (enable && !installer.enabled && pool.snapshot().total > 0) {
 				installer.install();
-				if (installer.enabled) logger.info("dsh-opencode-free: exit routing recovered — global dispatcher is free again (R1)");
+				if (installer.enabled) logger.info("dsh-freetap: exit routing recovered — global dispatcher is free again (R1)");
 			} else if (!enable && installer.enabled) installer.disable();
-			if (wasEnabled !== enable) logger.info(`dsh-opencode-free: ip pool ${enable ? "enabled" : "disabled"} via settings (live)`);
+			if (wasEnabled !== enable) logger.info(`dsh-freetap: ip pool ${enable ? "enabled" : "disabled"} via settings (live)`);
 		},
 		probeAll,
 		probeExit,

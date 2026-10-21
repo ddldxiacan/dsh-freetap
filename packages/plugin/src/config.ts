@@ -10,7 +10,7 @@ import { IpPoolConfigSchema, type IpPoolSettings, type VolatileRef } from './ip-
 /**
  * Plugin configuration (cordis config object, injected via cordis.patch.yml).
  */
-export interface DshOpencodeFreeConfig {
+export interface DshFreetapConfig {
   /**
    * Integration mode. `adapter` (default) registers a DSH LlmAdapter that
    * streams directly from the Zen anonymous lane — no child process. `sidecar`
@@ -97,8 +97,8 @@ export interface IpPoolConfig {
 }
 
 export const defaults = {
-  providerId: 'dsh-opencode-free',
-  apiKeyEnv: 'DSH_OPENCODE_FREE_TOKEN',
+  providerId: 'dsh-freetap',
+  apiKeyEnv: 'DSH_FREETAP_TOKEN',
   refreshSeconds: 300,
   restartDelayMs: 1000,
   restartMaxDelayMs: 60000,
@@ -106,10 +106,10 @@ export const defaults = {
 }
 
 export type ResolvedConfig = Required<
-  Pick<DshOpencodeFreeConfig, 'providerId' | 'apiKeyEnv' | 'refreshSeconds' | 'restartDelayMs' | 'restartMaxDelayMs' | 'maxConsecutiveCrashes'>
-> & DshOpencodeFreeConfig
+  Pick<DshFreetapConfig, 'providerId' | 'apiKeyEnv' | 'refreshSeconds' | 'restartDelayMs' | 'restartMaxDelayMs' | 'maxConsecutiveCrashes'>
+> & DshFreetapConfig
 
-export function resolveConfig(config: DshOpencodeFreeConfig = {}): ResolvedConfig {
+export function resolveConfig(config: DshFreetapConfig = {}): ResolvedConfig {
   return { ...defaults, ...config }
 }
 

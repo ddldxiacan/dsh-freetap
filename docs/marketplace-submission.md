@@ -1,6 +1,6 @@
 # Marketplace submission — awesome-dsh-plugin
 
-Draft for the PR that lists dsh-opencode-free in the dsh-market catalog
+Draft for the PR that lists dsh-freetap in the dsh-market catalog
 ([awesome-dsh-plugin/awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)).
 Format verified against that repo's `contributing.md` (2026-08-29).
 
@@ -12,14 +12,14 @@ Format verified against that repo's `contributing.md` (2026-08-29).
 ## The entry file
 
 Add exactly one file:
-`data/plugins/ddldxiacan__dsh-opencode-free--packages-plugin.yml`
+`data/plugins/ddldxiacan__dsh-freetap--packages-plugin.yml`
 (monorepo filename = `<owner>__<repo>--packages-plugin.yml`).
 
 ```yaml
-url: https://github.com/ddldxiacan/dsh-opencode-free/tree/master/packages/plugin
-name: ddldxiacan/dsh-opencode-free#packages/plugin
+url: https://github.com/ddldxiacan/dsh-freetap/tree/master/packages/plugin
+name: ddldxiacan/dsh-freetap#packages/plugin
 category: model
-tarball: https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
+tarball: https://github.com/ddldxiacan/dsh-freetap/releases/latest/download/dsh-freetap.tgz
 description:
   en: Registers OpenCode Zen free models in DeepSeek Harness with no API key.
   zh: 将 OpenCode Zen 免费模型接入 DeepSeek Harness，无需 API Key。
@@ -45,12 +45,12 @@ no plugin manifest of its own.
       1-day bar on 2026-10-20.
 - [x] `dsh.bundle` manifest reachable **from the URL the entry points at**
       (`packages/plugin/package.json` declares `dsh.bundle.patch: ./cordis.patch.yml`).
-- [x] A published **release** carrying `dsh-opencode-free-dsh-plugin.tgz`
+- [x] A published **release** carrying `dsh-freetap.tgz`
       (the version-free `latest/download/` path depends on it).
 - [x] Add the GitHub topic **`dsh-plugin`** to the repo (repo page → gear next to About).
-- [ ] Either publish to npm (`npm publish --access public` in `packages/plugin`,
-      access must be granted for the `@dsh-opencode-free` scope first) **or** rely
-      on the release tarball, which needs no registry account.
+- [ ] Either publish to npm (`npm publish --access public` in `packages/plugin`;
+      the package is unscoped, so no scope grant is needed, only an npm account)
+      **or** rely on the release tarball, which needs no registry account.
 - [ ] Optional: `screenshots.json` next to `packages/plugin/package.json` with
       1-8 relative image paths for the AppStore-style detail view.
 
@@ -60,7 +60,7 @@ no plugin manifest of its own.
 # 1. fork https://github.com/awesome-dsh-plugin/awesome-dsh-plugin
 # 2. in the fork:
 npm ci
-# 3. add data/plugins/ddldxiacan__dsh-opencode-free--packages-plugin.yml
+# 3. add data/plugins/ddldxiacan__dsh-freetap--packages-plugin.yml
 node scripts/generate-readme.mjs
 # 4. commit the YAML + both regenerated READMEs, open the PR
 ```
@@ -68,13 +68,13 @@ node scripts/generate-readme.mjs
 ## PR title
 
 ```
-Add ddldxiacan/dsh-opencode-free (model)
+Add ddldxiacan/dsh-freetap (model)
 ```
 
 ## PR body
 
 ```markdown
-Adds one entry: `data/plugins/ddldxiacan__dsh-opencode-free--packages-plugin.yml`.
+Adds one entry: `data/plugins/ddldxiacan__dsh-freetap--packages-plugin.yml`.
 
 **What it does** — registers a native DSH `LlmAdapter` that streams from
 OpenCode Zen's free endpoint (`Authorization: Bearer public`), so the
@@ -82,18 +82,18 @@ free models (big-pickle, hy3-free, ...) appear in the model picker without
 any API key. Catalog comes from the live `/v1/models` list
 intersected with models.dev free-by-metadata, falling back to a disk cache
 and a verified static list; the plugin auto-refreshes and writes a health
-snapshot to `~/.dsh-opencode-free/adapter-status.json`.
+snapshot to `~/.dsh-freetap/adapter-status.json`.
 
 **Install source** — a prebuilt release tarball
-(`dsh-opencode-free-dsh-plugin.tgz`), version-free via `releases/latest/download/`.
+(`dsh-freetap.tgz`), version-free via `releases/latest/download/`.
 
 **Manifest** — `packages/plugin/package.json` declares
 `dsh.bundle: { patch: "./cordis.patch.yml" }` (adapter-only; the legacy Go
 sidecar lives in `legacy/` and is not shipped).
 
-**Lineage** — independently maintained rename of FishBottle7/opencode2dsh.
+**Lineage** — independently maintained; derives from FishBottle7/opencode2dsh.
 Upgrading from the old name migrates saved settings automatically.
 
-- Repo: https://github.com/ddldxiacan/dsh-opencode-free
+- Repo: https://github.com/ddldxiacan/dsh-freetap
 - License: MIT
 ```
