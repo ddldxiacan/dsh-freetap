@@ -47,75 +47,96 @@ nothing to host.
 ## Install
 
 Installs from a prebuilt release, so no build step and no toolchain is needed.
-**Read the three steps in order** — doing the install before step 2 fails
-silently, in a way that looks like success (see below).
-
-**1. Make sure the profile exists.** Any `dsh plugin` command initializes it:
 
 ```sh
-dsh plugin --profile web list
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-opencode-free-dsh-plugin-0.4.3.tgz --config.strict-dep-builds=false
 ```
 
-**2. Approve two build scripts *before* the first install.** They are
-`@google/genai` and `protobufjs`, pulled in transitively by
-`@earendil-works/pi-ai`; pnpm blocks dependency build scripts by default. Append
-this to the profile's `pnpm-workspace.yaml`
-(`~/.dsh/profiles/web/pnpm-workspace.yaml`, under `%USERPROFILE%\.dsh\profiles\web\`
-on Windows):
+That is the whole install — one command, exit code 0. Then **restart DSH** and
+pick a model from the **dsh-opencode-free** group in the model selector.
 
-```yaml
-allowBuilds:
-  '@google/genai': false
-  protobufjs: false
+Requirements: DSH (DeepSeek Harness) 0.1.7 or newer with a web profile, Node.js
+≥ 20 (already present if DSH runs), and outbound HTTPS to `opencode.ai` and
+`models.dev`.
+
+### What that flag is for
+
+`@earendil-works/pi-ai` transitively pulls in `@google/genai` and `protobufjs`,
+which ship build scripts. pnpm blocks dependency build scripts by default, and
+in strict mode that disagreement is a hard failure:
+
+```
+Error: ERR_PNPM_IGNORED_BUILDS
+  × adding a new package
+  ╰─▶ Ignored build scripts: @google/genai@1.52.0, protobufjs@7.6.6
 ```
 
-`false` keeps the scripts disabled — it records the decision pnpm is waiting for,
-which is all that is needed. (Upstream ships the same two as `false`.)
+Those scripts are not needed at runtime (upstream ships both as `false`), so
+`--config.strict-dep-builds=false` tells that single pnpm run to report the
+skip as a warning and carry on. Verified: exit 0, no script executed, plugin
+registered as a bundle.
 
-**3. Install:**
+Equivalents, if you prefer to be explicit rather than relax the check for one
+run — both also work and record `allowBuilds: {'@google/genai': false,
+protobufjs: false}` in the profile:
 
 ```sh
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
+# deny the two scripts explicitly
+dsh plugin --profile web add <same-url> --allow-build='!@google/genai' --allow-build='!protobufjs'
 ```
 
-The version-free link is a stable bookmark for the *first* install. It is
-deliberately **not** the update command: pnpm records the URL it resolved in
-`pnpm-lock.yaml` together with the tarball's integrity hash, and a URL that
-never changes is treated as already resolved ("Lockfile is up to date,
-resolution step is skipped") — re-adding it keeps the version you have. Use the
-tag-scoped asset for updates (see [Updating](#updating)).
+### ⚠ If you installed the bare `add` URL and hit that error
 
-### Why step 2 comes first
+Do not simply retry — first remove. This is worse than it looks: pnpm has
+**already written the dependency** into the profile's `package.json` when it
+errors, and DSH registers a package as a profile *bundle* only when the run
+exits 0 **and** the package counts as new. A plain retry therefore prints
+`Already up to date` and exits **0** while `dsh.profile.bundles` never gains the
+plugin — it sits in `node_modules`, never loads, and no model appears. Nothing
+in the output says so.
 
-Skip it and the first install stops at `ERR_PNPM_IGNORED_BUILDS` — but pnpm has
-already written the dependency into the profile's `package.json`. DSH registers a
-newly installed package as a profile *bundle* only when that pnpm run exits 0
-**and** the package is a new dependency. So the retry is no longer "new", the
-registration is skipped, and the run exits **0** with the plugin present on disk
-in `node_modules` but never added to `dsh.profile.bundles` — meaning it never
-loads and no models appear. Nothing in the output says so.
-
-If you have already hit that, recover with a remove and re-add:
+Recover with an explicit remove + add:
 
 ```sh
 dsh plugin --profile web remove @dsh-opencode-free/dsh-plugin
-dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/latest/download/dsh-opencode-free-dsh-plugin.tgz
+dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-opencode-free-dsh-plugin-0.4.3.tgz --config.strict-dep-builds=false
 ```
 
-To confirm the plugin is really registered, check that the profile's
-`package.json` lists `@dsh-opencode-free/dsh-plugin` under `dsh.profile.bundles` — not
-just under `dependencies`.
+**Verify** it really registered: `@dsh-opencode-free/dsh-plugin` must appear
+under `dsh.profile.bundles` in the profile's `package.json`, not only under
+`dependencies`.
+
+### Installing in the Web UI (recommended if you never use a terminal)
+
+**Settings → Plugins → Install**, then paste the tarball URL:
+
+```
+https://github.com/ddldxiacan/dsh-opencode-free/releases/download/v0.4.3/dsh-opencode-free-dsh-plugin-0.4.3.tgz
+```
+
+The first attempt **always fails once**. That is by design, not a bug:
+
+1. The dialog reports the failure and shows an **"Install scripts need
+   permission"** section listing `@google/genai` and `protobufjs`;
+2. Click **"Allow these scripts and retry"**;
+3. The second run succeeds and asks you to restart.
+
+This path does **not** hit the silent-retry trap described below: after every
+failed run the page restores `package.json` and `pnpm-lock.yaml`, so the retry
+still counts as a new dependency and registers as a profile bundle. Verified
+end to end on a real profile: fail → allow → retry succeeded, and
+`dsh.profile.bundles` gained `@dsh-opencode-free/dsh-plugin` at 0.4.3.
+
+If you close that dialog and use the Install button again later, it fails again
+and re-opens the same approval section — it will not pretend to have succeeded.
+Click "Allow these scripts and retry" and it goes through.
 
 ### Other ways to install
-
-**In the Web UI**: **Settings → Plugins → Install**, and paste the same tarball
-URL. The Web page writes the same kind of approval and has its own bundle
-selection; the CLI steps above are the path verified here.
 
 **From GitHub directly** (no registry involved):
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free
+dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free --config.strict-dep-builds=false
 ```
 
 This works because the repository root *is* the installable plugin: it carries
@@ -125,7 +146,7 @@ scripts for git dependencies — so shipping the build is what makes this path
 work. Pinning a tag is recommended for stability:
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free#v0.4.0
+dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free#v0.4.3 --config.strict-dep-builds=false
 ```
 
 **From npm** (once the package is published):
@@ -165,7 +186,7 @@ dsh plugin --profile web add https://github.com/ddldxiacan/dsh-opencode-free/rel
 **git install**: follow master (a git spec re-resolves each time):
 
 ```sh
-dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free
+dsh plugin --profile web add github:ddldxiacan/dsh-opencode-free --config.strict-dep-builds=false
 ```
 
 **npm install**:
@@ -179,12 +200,8 @@ Then restart DSH. To confirm the new version landed, compare the profile's
 health snapshot at `~/.dsh-opencode-free/adapter-status.json`.
 
 If an update ever leaves the plugin installed but not loaded, it is the
-`ERR_PNPM_IGNORED_BUILDS` trap described above: remove and re-add, so the
-package counts as new and DSH registers it as a bundle.
-
-Requires DSH (DeepSeek Harness) 0.1.7 or newer with a web profile (the IP 池
-settings page rides the 0.1.7 Plugins page contract); Node.js ≥ 20 (already
-present if DSH runs); outbound HTTPS to `opencode.ai` and `models.dev`.
+`ERR_PNPM_IGNORED_BUILDS` trap described under [Install](#install): remove and
+re-add, so the package counts as new and DSH registers it as a bundle.
 
 ## Configuration
 
@@ -273,7 +290,7 @@ The plugin writes a health snapshot after every refresh round:
 | Output limit reached after reasoning with no answer | Plugin 0.3.6 retries once with thinking Off when the model supports it. Any answer text or tool-call event prevents replay. The retry preserves the original output cap and may still fail; both requests' usage is counted. Models without Off, including Muse, require a manual change of settings or model. |
 | Muse reports `REGION_BLOCKED` / "This model is not available in your country" | Zen has rejected the current network region for this model. Plugin 0.3.5 preserves that explanation; older versions mislabeled the same 403 as an invalid API key. The anonymous lane does not need a personal key. Use a model available in your region. |
 | Connection error to `127.0.0.1:*` | A stale sidecar route shadows the adapter; plugin ≥ 0.2.1 removes it at startup. |
-| Install fails with `ERR_PNPM_IGNORED_BUILDS` | A transitive dependency of `pi-ai` (`@google/genai`, `protobufjs`) has build scripts that are not needed at runtime. Approve-or-decline them via the plugin market, or set both to `false` under `allowBuilds:` in the profile's `pnpm-workspace.yaml`. |
+| Install fails with `ERR_PNPM_IGNORED_BUILDS` | A transitive dependency of `pi-ai` (`@google/genai`, `protobufjs`) has build scripts that are not needed at runtime. Add `--config.strict-dep-builds=false` to the install command, or click **Allow these scripts and retry** in the Web UI. Do not simply re-run a failed bare `add` — see [Install](#install). |
 
 ## Renamed from opencode2dsh
 
